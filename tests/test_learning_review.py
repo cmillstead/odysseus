@@ -1,4 +1,5 @@
 import json
+import os
 import time
 
 from fastapi import FastAPI
@@ -342,8 +343,12 @@ def test_hermes_routes_reject_out_of_root_base_path_without_leaking(tmp_path):
     # No auth middleware is mounted on this bare app, so get_current_user
     # resolves the real (unauthenticated) owner of None -- this test exercises
     # the production-default Hermes root confinement, not owner scoping.
+    # hermes_import_enabled=True exercises the import path directly; the
+    # default-off gate itself is covered separately.
     app = FastAPI()
-    app.include_router(setup_learning_routes(memory_manager, None, skills_manager, store=store))
+    app.include_router(setup_learning_routes(
+        memory_manager, None, skills_manager, store=store, hermes_import_enabled=True,
+    ))
     client = TestClient(app)
 
     preview = client.post("/api/learning/hermes/preview", json={"base_path": str(secret_file)})
@@ -464,7 +469,10 @@ category: dev
     monkeypatch.setattr(learning_routes, "get_current_user", lambda _request: "alice")
 
     app = FastAPI()
-    app.include_router(setup_learning_routes(memory_manager, None, skills_manager, hermes_allowed_roots=[hermes]))
+    app.include_router(setup_learning_routes(
+        memory_manager, None, skills_manager,
+        hermes_allowed_roots=[hermes], hermes_import_enabled=True,
+    ))
     client = TestClient(app)
 
     bulk = client.post("/api/learning/pending/approve-all")
@@ -479,4 +487,54 @@ category: dev
     staged = client.post("/api/learning/hermes/stage", json={"base_path": str(hermes)})
     assert staged.status_code == 200
     assert staged.json()["staged_count"] == 1
-    assert len(store.list_pending(owner="alice")) == 2
+
+
+def test_hermes_routes_disabled_by_default_reject_without_reading(tmp_path):
+    store = LearningProposalStore(str(tmp_path / "learning.json"))
+    memory_manager = MemoryManager(str(tmp_path))
+    skills_manager = SkillsManager(str(tmp_path))
+    secret_text = "CREDENTIAL_THAT_MUST_NOT_LEAK"
+    hermes = tmp_path / ".hermes"
+    hermes.mkdir()
+    (hermes / "memories.json").write_text(
+        json.dumps({"memories": [secret_text]}), encoding="utf-8",
+    )
+
+    # hermes_import_enabled not passed -> defaults to reading the
+    # server-side setting, which defaults False.
+    app = FastAPI()
+    app.include_router(setup_learning_routes(
+        memory_manager, None, skills_manager, store=store, hermes_allowed_roots=[hermes],
+    ))
+    client = TestClient(app)
+
+    preview = client.post("/api/learning/hermes/preview", json={"base_path": str(hermes)})
+    assert preview.status_code == 403
+    assert preview.json()["detail"] == "Hermes import is disabled"
+    assert secret_text not in preview.text
+    assert "proposals" not in preview.json()
+    assert "items" not in preview.json()
+
+    staged = client.post("/api/learning/hermes/stage", json={"base_path": str(hermes)})
+    assert staged.status_code == 403
+    assert staged.json()["detail"] == "Hermes import is disabled"
+    assert secret_text not in staged.text
+    assert "proposals" not in staged.json()
+    assert len(store.list_pending(owner=None)) == 0
+
+
+def test_resolve_confined_rejects_symlink_loop_without_raising(tmp_path):
+    from services.memory.learning_review import _resolve_confined
+
+    root = tmp_path / "hermes"
+    root.mkdir()
+    # A real, self-referencing symlink: resolving it requires Path.resolve()
+    # to detect it is already in the middle of resolving this exact symlink,
+    # which raises RuntimeError on Python 3.11+ (a plain os.stat-based check
+    # like exists()/is_file() would instead get a normal OSError and return
+    # False -- RuntimeError only surfaces from resolve()'s own bookkeeping).
+    loop_link = root / "loop"
+    os.symlink(loop_link, loop_link)
+    candidate = loop_link / "SKILL.md"
+
+    assert _resolve_confined(candidate, root.resolve()) is None

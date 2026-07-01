@@ -153,6 +153,12 @@ DEFAULT_SETTINGS = {
     "teacher_model": "",
     "teacher_enabled": False,
     "teacher_tier2_enabled": False,
+    # Hermes import endpoints (/api/learning/hermes/preview, /stage) read
+    # from ~/.hermes as a one-shot migration source. Off by default so an
+    # authenticated home-dir-reading API isn't standing surface area for
+    # every deployment -- an operator flips this on only for the migration
+    # window, then back off.
+    "hermes_import_enabled": False,
     # Skills: minimum self-reported confidence for an auto-written (LLM-authored)
     # DRAFT skill to be injected into the agent prompt. Published skills always
     # qualify. Keeps low-confidence auto-skills out of context until they're

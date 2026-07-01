@@ -17,6 +17,7 @@ from services.memory.learning_review import (
 )
 from services.runs import get_run_registry
 from src.auth_helpers import get_current_user
+from src.settings import get_setting
 
 
 def setup_learning_routes(
@@ -26,6 +27,7 @@ def setup_learning_routes(
     *,
     hermes_allowed_roots: Optional[Iterable[str | os.PathLike[str]]] = None,
     store: Optional[LearningProposalStore] = None,
+    hermes_import_enabled: Optional[bool] = None,
 ) -> APIRouter:
     """Build the learning-review router.
 
@@ -38,9 +40,21 @@ def setup_learning_routes(
     ``LEARNING_PROPOSALS_FILE``). Production callers should leave it unset;
     tests can pass a store backed by a temp file instead of touching real
     application data.
+
+    ``hermes_import_enabled`` gates the ``/hermes/preview`` and
+    ``/hermes/stage`` endpoints. ``~/.hermes`` is a one-shot migration
+    source, not a permanent API surface -- leaving it None (the production
+    default) reads the server-side ``hermes_import_enabled`` setting
+    (default off). Tests pass an explicit bool to exercise either path;
+    this is a server-side control only, never client-controlled.
     """
     router = APIRouter(prefix="/api/learning", tags=["learning"])
     store = store or LearningProposalStore()
+    _hermes_enabled = (
+        hermes_import_enabled
+        if hermes_import_enabled is not None
+        else bool(get_setting("hermes_import_enabled", False))
+    )
 
     def _owner(request: Request):
         return get_current_user(request)
@@ -227,6 +241,8 @@ def setup_learning_routes(
 
     @router.post("/hermes/preview")
     async def hermes_preview(request: Request):
+        if not _hermes_enabled:
+            raise HTTPException(status_code=403, detail="Hermes import is disabled")
         owner = _owner(request)
         data = await _json_body(request)
         base_path = data.get("base_path") or "~/.hermes"
@@ -254,6 +270,8 @@ def setup_learning_routes(
 
     @router.post("/hermes/stage")
     async def hermes_stage(request: Request):
+        if not _hermes_enabled:
+            raise HTTPException(status_code=403, detail="Hermes import is disabled")
         owner = _owner(request)
         data = await _json_body(request)
         base_path = data.get("base_path") or "~/.hermes"

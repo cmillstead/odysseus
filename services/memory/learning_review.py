@@ -1173,7 +1173,11 @@ def _resolve_confined(candidate: Path, root: Path) -> Path | None:
     """
     try:
         resolved = candidate.resolve()
-    except OSError:
+    except (OSError, RuntimeError, ValueError):
+        # Path.resolve() raises RuntimeError (and can raise ValueError) on
+        # symlink loops on Python 3.11+, not just OSError -- a malicious
+        # symlink-loop tree under the import root should yield a clean
+        # rejection, not a 500.
         return None
     if resolved == root or root in resolved.parents:
         return resolved
