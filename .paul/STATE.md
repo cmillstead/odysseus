@@ -48,6 +48,7 @@ PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
 | Themed groupings (Calendar+Contacts, Model+Assistant+Copilot) — co-locate vs separate | Grounding | Plan-time for 02-01, 02-02 |
 | Singleton "Other" bucket (23 files) grouping | Grounding | Optional v0.1.x pass |
 | `implementation-spec-capability-gaps.md` (WS-0..25) | Feature roadmap, separate | After backend boundaries milestone |
+| `test_auth_regressions.py` subset-run fragility — its `_ensure_stub`/`_auth_regressions_stubs` fixture assumes `core.auth` is pre-loaded; the auth shim (01-02) stopped pop-and-reimport from re-establishing it, so running the auth files as a NARROW subset now ImportErrors on `RESERVED_USERNAMES`. Full suite + CI (full collection) unaffected. | 01-02 Auth shim (exposed pre-existing fixture assumption) | Harden the fixture to not depend on `core.auth` being cached; low priority (full-suite/CI green) |
 
 ### Blockers/Concerns
 
