@@ -44,6 +44,7 @@ behavior change and no broken import paths along the way.
 - [x] Slice 2 — `routes/gallery/` domain package (shim pattern) — on fork `dev`
 - [x] Slice 2 — `routes/research/` domain package — on fork `dev`
 - [x] Slice 2 — `routes/email/` domain package — merged 2026-07-01 (fork PR #2)
+- [x] Slice 2 — `routes/document/` domain package — merged 2026-07-01 (fork PR #3, merge `b049650`)
 
 ### Active (In Progress)
 
@@ -51,8 +52,7 @@ behavior change and no broken import paths along the way.
 
 ### Planned (Next) — grounded 2026-07-01, spec §4 boundaries
 
-- [ ] Documents (document_routes + document_helpers) — LOW
-- [ ] Auth (auth_routes + api_token_routes + device_flow) — LOW
+- [ ] Auth (auth_routes + api_token_routes + device_flow) — LOW  ← **next (01-02)**
 - [ ] Calendar/Contacts (calendar_routes + contacts_routes) — MEDIUM
 - [ ] Model/LLM (model_routes + assistant_routes + copilot_routes) — MEDIUM
 - [ ] Cookbook (cookbook_routes + cookbook_helpers + cookbook_output) — MEDIUM
@@ -105,7 +105,7 @@ behavior change and no broken import paths along the way.
 |--------|--------|---------|--------|
 | Test-suite parity per slice | 0 new failures vs baseline | baseline: 3 pre-existing failures | On track |
 | `python -m compileall` | clean on every PR | clean | On track |
-| Multi-file route domains packaged (v0.1) | 9 / 9 | 3 / 9 (email, gallery, research) | In progress |
+| Multi-file route domains packaged (v0.1) | 9 / 9 | 4 / 9 (email, gallery, research, document) | In progress |
 | Slice 1 (tool_implementations → src/tools/) | complete | complete | Achieved |
 
 ## Tech Stack / Tools
