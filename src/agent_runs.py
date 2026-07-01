@@ -17,13 +17,14 @@ close / navigation / refresh). It does NOT survive a server restart.
 import asyncio
 import json
 import logging
+import uuid
 from typing import AsyncGenerator, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class _Run:
-    __slots__ = ("buffer", "subscribers", "status", "task", "evict_task")
+    __slots__ = ("buffer", "subscribers", "status", "task", "evict_task", "run_id", "event_count")
 
     def __init__(self) -> None:
         self.buffer: list = []          # ordered SSE event strings (replay log)
@@ -31,6 +32,8 @@ class _Run:
         self.status: str = "running"    # running | done | error | stopped
         self.task: Optional[asyncio.Task] = None
         self.evict_task: Optional[asyncio.Task] = None
+        self.run_id: Optional[str] = None
+        self.event_count: int = 0
 
 
 _RUNS: Dict[str, _Run] = {}
@@ -46,11 +49,38 @@ def _publish(run: _Run, ev: str) -> None:
     """Append one SSE event and fan it out to every live subscriber."""
     run.buffer.append(ev)
     seq = len(run.buffer) - 1
+    run.event_count += 1
     for q in list(run.subscribers):
         try:
             q.put_nowait((seq, ev))
         except Exception:
             pass
+    _persist_stream_sample(run, seq, ev)
+
+
+def _persist_stream_sample(run: _Run, seq: int, ev: str) -> None:
+    """Persist sampled stream telemetry without writing every token to SQLite."""
+    if not run.run_id:
+        return
+    terminal = "[DONE]" in ev or "event: error" in ev
+    if not terminal and seq % 25 != 0:
+        return
+    try:
+        from services.runs import get_run_registry
+
+        get_run_registry().append_event(
+            run.run_id,
+            "stream_event",
+            "Agent stream event persisted",
+            payload={
+                "seq": seq,
+                "bytes": len(ev),
+                "terminal": terminal,
+                "preview": ev[:500],
+            },
+        )
+    except Exception:
+        logger.debug("Run registry stream event sync failed", exc_info=True)
 
 
 def _schedule_evict(session_id: str) -> None:
@@ -85,6 +115,101 @@ def get_status(session_id: str) -> Optional[str]:
     return r.status if r else None
 
 
+def _create_registry_run(session_id: str) -> Optional[str]:
+    try:
+        import os
+        import time
+
+        from core.database import Session as DbSession, SessionLocal
+        from services.runs import get_run_registry
+        db = SessionLocal()
+        try:
+            sess = db.query(DbSession).filter(DbSession.id == session_id).first()
+            owner = getattr(sess, "owner", None) if sess else None
+            title = f"Agent: {getattr(sess, 'name', None) or session_id[:8]}"
+            model = getattr(sess, "model", None) if sess else None
+        finally:
+            db.close()
+        registry = get_run_registry()
+        run = registry.create_run(
+            run_type="agent",
+            title=title,
+            owner=owner,
+            objective=f"Detached chat stream for session {session_id}",
+            origin="chat_stream",
+            executor="local_agent",
+            backend="local",
+            model=model,
+            session_id=session_id,
+            external_type="agent_stream",
+            external_id=f"{session_id}:{uuid.uuid4().hex[:8]}",
+            status="running",
+            current_step="Streaming response",
+            metadata={
+                "executor": "local_agent",
+                "durability_scope": "local_process_with_registry_recovery",
+                "restart_recovery": "block_if_worker_missing",
+                "last_heartbeat_at": time.time(),
+                "pid": os.getpid(),
+                "capabilities": {
+                    "cancel": True,
+                    "pause": True,
+                    "resume": True,
+                    "inputs": True,
+                    "approvals": True,
+                    "artifacts": True,
+                    "subruns": True,
+                    "restart_recovery": "truthful_blocked",
+                    "durability": "registry_events",
+                },
+            },
+        )
+        registry.append_event(run["id"], "status", "Agent stream started", payload={"session_id": session_id}, owner=owner)
+        registry.append_event(
+            run["id"],
+            "checkpoint",
+            "Stream checkpoint created",
+            payload={"checkpoint": "start", "session_id": session_id},
+            owner=owner,
+        )
+        return run["id"]
+    except Exception:
+        logger.debug("Run registry agent stream start sync failed for %s", session_id, exc_info=True)
+        return None
+
+
+def _update_registry_run(run: _Run, session_id: str, status: str, message: str) -> None:
+    if not getattr(run, "run_id", None):
+        return
+    try:
+        from services.runs import get_run_registry
+        normalized = {
+            "done": "succeeded",
+            "error": "failed",
+            "stopped": "cancelled",
+        }.get(status, status)
+        registry = get_run_registry()
+        registry.update_run(
+            run.run_id,
+            status=normalized,
+            current_step=message,
+            summary=message if normalized == "succeeded" else None,
+            error=message if normalized == "failed" else None,
+            metadata={"final_event_count": getattr(run, "event_count", 0)},
+            event_type="complete" if normalized == "succeeded" else ("cancel" if normalized == "cancelled" else "error"),
+            event_message=message,
+        )
+        if normalized == "succeeded":
+            registry.append_event(
+                run.run_id,
+                "checkpoint",
+                "Final output checkpoint saved",
+                payload={"event_count": getattr(run, "event_count", 0)},
+            )
+    except Exception:
+        logger.debug("Run registry agent stream finish sync failed for %s", session_id, exc_info=True)
+
+
 async def _drain(session_id: str, agen: AsyncGenerator[str, None],
                  prev_task: Optional[asyncio.Task] = None) -> None:
     """Pull every event from the wrapped generator into the run buffer, fanning
@@ -108,6 +233,7 @@ async def _drain(session_id: str, agen: AsyncGenerator[str, None],
             _publish(run, ev)
         if run.status == "running":
             run.status = "done"
+            _update_registry_run(run, session_id, "done", "Agent stream completed")
     except asyncio.CancelledError:
         run.status = "stopped"
         # Let the wrapped generator's own CancelledError handler run (it saves
@@ -116,9 +242,11 @@ async def _drain(session_id: str, agen: AsyncGenerator[str, None],
             await agen.aclose()
         except Exception:
             pass
+        _update_registry_run(run, session_id, "stopped", "Agent stream stopped")
     except Exception as e:
         logger.error("[agent-run] %s failed: %s", session_id, e, exc_info=True)
         run.status = "error"
+        _update_registry_run(run, session_id, "error", "Agent stream failed")
         _publish(
             run,
             "event: error\n"
@@ -150,6 +278,7 @@ def start(session_id: str, agen: AsyncGenerator[str, None]) -> _Run:
         if prev.evict_task and not prev.evict_task.done():
             prev.evict_task.cancel()
     run = _Run()
+    run.run_id = _create_registry_run(session_id)
     _RUNS[session_id] = run
     run.task = asyncio.create_task(_drain(session_id, agen, prev_task))
     return run
@@ -208,6 +337,18 @@ def stop(session_id: str) -> bool:
     """Cancel an in-flight run (the wrapped generator saves its partial)."""
     run = _RUNS.get(session_id)
     if run and run.task and not run.task.done():
+        try:
+            if run.run_id:
+                from services.runs import get_run_registry
+                get_run_registry().update_run(
+                    run.run_id,
+                    status="cancelled",
+                    current_step="Stop requested",
+                    event_type="cancel",
+                    event_message="Agent stream stop requested",
+                )
+        except Exception:
+            pass
         run.task.cancel()
         return True
     return False

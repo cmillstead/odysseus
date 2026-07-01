@@ -421,6 +421,19 @@ async def _run_skill_test_job(key, name, md, task, url, model, headers, owner, s
     if job is None:
         return
     log = job["log"]
+    run_id = job.get("run_id")
+    if run_id:
+        try:
+            from services.runs import get_run_registry
+            get_run_registry().append_event(
+                run_id,
+                "status",
+                "Skill test worker started",
+                payload={"skill": name, "task": task},
+                owner=owner,
+            )
+        except Exception:
+            pass
     transcript = []
     say_buf = []
 
@@ -493,6 +506,23 @@ async def _run_skill_test_job(key, name, md, task, url, model, headers, owner, s
             except Exception:
                 pass
     job["status"] = "done"
+    if run_id:
+        try:
+            from services.runs import get_run_registry
+            verdict = (job.get("verdict") or {}).get("verdict") or "unknown"
+            registry = get_run_registry()
+            registry.update_run(
+                run_id,
+                owner=owner,
+                status="succeeded",
+                current_step=f"Verdict: {verdict}",
+                summary=(job.get("verdict") or {}).get("summary") or verdict,
+                event_type="complete",
+                event_message="Skill test completed",
+                metadata={"verdict": job.get("verdict"), "log": job.get("log", [])[-40:]},
+            )
+        except Exception:
+            pass
 
 
 # ── Autonomous skill audit: test → judge → self-edit → retry → teacher → flag ──
@@ -950,11 +980,24 @@ async def _run_audit_all_job(key, skills_manager, names, url, model, headers, te
     job = _skill_audit_jobs.get(key)
     if job is None:
         return
+    run_id = job.get("run_id")
 
     def log(msg):
         job["log"].append(msg)
         if len(job["log"]) > 1000:
             del job["log"][0:len(job["log"]) - 1000]
+        if run_id:
+            try:
+                from services.runs import get_run_registry
+                get_run_registry().append_event(
+                    run_id,
+                    "progress",
+                    str(msg),
+                    payload={"done": job.get("done", 0), "total": job.get("total", 0), "current": job.get("current")},
+                    owner=owner,
+                )
+            except Exception:
+                pass
 
     cancelled = False
     try:
@@ -964,6 +1007,18 @@ async def _run_audit_all_job(key, skills_manager, names, url, model, headers, te
                 log("(cancelled)")
                 break
             job["current"] = nm
+            if run_id:
+                try:
+                    from services.runs import get_run_registry
+                    get_run_registry().update_run(
+                        run_id,
+                        owner=owner,
+                        status="running",
+                        current_step=f"Auditing {nm}",
+                        metadata={"current": nm, "done": job.get("done", 0), "total": job.get("total", 0)},
+                    )
+                except Exception:
+                    pass
             skills = skills_manager.load(owner=owner)
             sk = next((s for s in skills if s.get("name") == nm), None)
             if not sk:
@@ -1003,6 +1058,22 @@ async def _run_audit_all_job(key, skills_manager, names, url, model, headers, te
         job["status"] = "cancelled" if cancelled or job.get("cancel") else "done"
         job["finished"] = _time.time()
         job.pop("task", None)
+        if run_id:
+            try:
+                from services.runs import get_run_registry
+                registry = get_run_registry()
+                registry.update_run(
+                    run_id,
+                    owner=owner,
+                    status="cancelled" if job["status"] == "cancelled" else "succeeded",
+                    current_step="Cancelled" if job["status"] == "cancelled" else "Audit complete",
+                    summary=f"{job.get('done', 0)}/{job.get('total', 0)} skill(s) audited",
+                    event_type="cancel" if job["status"] == "cancelled" else "complete",
+                    event_message="Skill audit cancelled" if job["status"] == "cancelled" else "Skill audit completed",
+                    metadata={"results": job.get("results", []), "log": job.get("log", [])[-80:]},
+                )
+            except Exception:
+                pass
 
 
 def _resolve_audit_models(owner=None):
@@ -1079,6 +1150,26 @@ async def run_scheduled_skill_audit(skills_manager: SkillsManager,
                                + (f"; teacher {teacher[1]}" if teacher else "")],
         "started": _time.time(), "cancel": False,
     }
+    try:
+        from services.runs import get_run_registry
+        registry = get_run_registry()
+        run = registry.create_run(
+            run_type="skill_audit",
+            title="Nightly skill audit",
+            owner=owner,
+            objective=f"Audit {len(names)} least-recently-checked skill(s)",
+            origin="skills:nightly",
+            executor="skills_routes",
+            model=model,
+            external_type="skill_audit_scheduled",
+            external_id=f"{owner or 'shared'}:nightly",
+            status="running",
+            current_step="Starting nightly skill audit",
+            metadata={"names": names, "teacher": teacher[1] if teacher else None},
+        )
+        _skill_audit_jobs[key]["run_id"] = run.get("id")
+    except Exception:
+        pass
     logger.info(f"Scheduled skill audit starting: {len(names)} skill(s) (owner={owner or 'all'})")
     await _run_audit_all_job(key, skills_manager, names, url, model, headers, teacher, owner)
     job = _skill_audit_jobs.get(key, {})
@@ -1431,6 +1522,27 @@ def setup_skills_routes(skills_manager: SkillsManager) -> APIRouter:
             logger.warning(f"Skill-test model resolve failed: {_e}")
 
         key = (user or "", name)
+        run_id = None
+        try:
+            from services.runs import get_run_registry
+            registry = get_run_registry()
+            run = registry.create_run(
+                run_type="skill_audit",
+                title=f"Skill test: {name}",
+                owner=user,
+                objective=task,
+                origin="skills:test",
+                executor="skills_routes",
+                model=model,
+                external_type="skill_test",
+                external_id=f"{user or 'shared'}:{name}",
+                status="running",
+                current_step="Running skill test",
+                metadata={"skill": name, "task": task},
+            )
+            run_id = run.get("id")
+        except Exception:
+            run_id = None
         _skill_test_jobs[key] = {
             "status": "running",
             "task": task,
@@ -1439,6 +1551,7 @@ def setup_skills_routes(skills_manager: SkillsManager) -> APIRouter:
             "started": _time.time(),
             "log": [{"type": "skill_test_start", "task": task, "skill": name, "model": model}],
             "verdict": None,
+            "run_id": run_id,
         }
         _asyncio.create_task(_run_skill_test_job(key, name, md, task, url, model, headers, user, skills_manager))
         return {"ok": True, "status": "running", "skill": name, "model": model}
@@ -1532,6 +1645,26 @@ def setup_skills_routes(skills_manager: SkillsManager) -> APIRouter:
             "results": [], "log": [f"Auditing {len(names)} skill(s) with {model}" + (f"; teacher {teacher[1]}" if teacher else "")],
             "started": _time.time(), "cancel": False,
         }
+        try:
+            from services.runs import get_run_registry
+            registry = get_run_registry()
+            run = registry.create_run(
+                run_type="skill_audit",
+                title="Skill audit",
+                owner=user,
+                objective=f"Audit {len(names)} skill(s)",
+                origin="skills:audit-all",
+                executor="skills_routes",
+                model=model,
+                external_type="skill_audit",
+                external_id=f"{user or 'shared'}:{scope}",
+                status="running",
+                current_step="Starting skill audit",
+                metadata={"scope": scope, "names": names, "teacher": teacher[1] if teacher else None},
+            )
+            _skill_audit_jobs[key]["run_id"] = run.get("id")
+        except Exception:
+            pass
         task = _asyncio.create_task(_run_audit_all_job(key, skills_manager, names, url, model, headers, teacher, user))
         _skill_audit_jobs[key]["task"] = task
         return {"ok": True, "status": "running", "total": len(names), "model": model}
@@ -1561,6 +1694,19 @@ def setup_skills_routes(skills_manager: SkillsManager) -> APIRouter:
             task = job.get("task")
             if task and not task.done():
                 task.cancel()
+            if job.get("run_id"):
+                try:
+                    from services.runs import get_run_registry
+                    get_run_registry().update_run(
+                        job["run_id"],
+                        owner=user,
+                        status="cancelled",
+                        current_step="Cancelled",
+                        event_type="cancel",
+                        event_message="Skill audit cancellation requested",
+                    )
+                except Exception:
+                    pass
         return {"ok": True, "status": "cancelled" if job else "none"}
 
     @router.post("/{skill_id}/markdown")

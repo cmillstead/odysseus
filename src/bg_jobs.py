@@ -156,6 +156,19 @@ def launch(command: str, session_id: str, cwd: Optional[str] = None,
     jobs = _load()
     jobs[job_id] = rec
     _save(jobs)
+    try:
+        from services.runs import get_run_registry
+        tracked = get_run_registry().sync_background_job(rec)
+        if tracked:
+            get_run_registry().append_event(
+                tracked["id"],
+                "status",
+                "Background shell job launched",
+                payload={"job_id": job_id, "pid": proc.pid},
+                owner=tracked.get("owner"),
+            )
+    except Exception:
+        pass
     return rec
 
 
@@ -193,6 +206,7 @@ def refresh() -> Dict[str, Dict[str, Any]]:
     timeout). Idempotent — safe to call from a poll loop. Returns the store."""
     jobs = _load()
     changed = False
+    completed_ids = []
     now = time.time()
     for rec in jobs.values():
         if rec.get("status") != "running":
@@ -207,6 +221,7 @@ def refresh() -> Dict[str, Dict[str, Any]]:
             rec["status"] = "done" if code == 0 else "failed"
             rec["ended_at"] = now
             changed = True
+            completed_ids.append(rec.get("id"))
         elif (now - rec.get("started_at", now)) > rec.get("max_runtime_s", DEFAULT_MAX_RUNTIME_S):
             # Runaway / stuck — reap it but STILL surface a follow-up.
             _kill(rec.get("pid"))
@@ -215,6 +230,7 @@ def refresh() -> Dict[str, Dict[str, Any]]:
             rec["ended_at"] = now
             rec["timed_out"] = True
             changed = True
+            completed_ids.append(rec.get("id"))
         elif not _pid_alive(rec.get("pid")) and not exit_path.exists():
             # Process vanished without writing an exit code (killed, OOM,
             # crash). Don't leave it "running" forever.
@@ -223,10 +239,29 @@ def refresh() -> Dict[str, Dict[str, Any]]:
             rec["ended_at"] = now
             rec["died"] = True
             changed = True
+            completed_ids.append(rec.get("id"))
     if _prune(jobs, now):
         changed = True
     if changed:
         _save(jobs)
+        try:
+            from services.runs import get_run_registry
+            registry = get_run_registry()
+            for rec in jobs.values():
+                if rec.get("id") not in completed_ids:
+                    continue
+                if rec.get("status") in ("done", "failed"):
+                    tracked = registry.sync_background_job(rec)
+                    if tracked:
+                        registry.append_event(
+                            tracked["id"],
+                            "complete" if rec.get("status") == "done" else "error",
+                            "Background shell job finished" if rec.get("status") == "done" else "Background shell job failed",
+                            payload={"job_id": rec.get("id"), "exit_code": rec.get("exit_code")},
+                            owner=tracked.get("owner"),
+                        )
+        except Exception:
+            pass
     return jobs
 
 
@@ -248,6 +283,19 @@ def mark_followed_up(job_id: str) -> None:
     if job_id in jobs:
         jobs[job_id]["followed_up"] = True
         _save(jobs)
+        try:
+            from services.runs import get_run_registry
+            tracked = get_run_registry().sync_background_job(jobs[job_id])
+            if tracked:
+                get_run_registry().append_event(
+                    tracked["id"],
+                    "progress",
+                    "Agent follow-up completed",
+                    payload={"job_id": job_id},
+                    owner=tracked.get("owner"),
+                )
+        except Exception:
+            pass
 
 
 def get(job_id: str) -> Optional[Dict[str, Any]]:
@@ -280,6 +328,19 @@ def kill(job_id: str) -> Optional[Dict[str, Any]]:
         rec["killed"] = True
         rec["followed_up"] = True
         _save(jobs)
+        try:
+            from services.runs import get_run_registry
+            tracked = get_run_registry().sync_background_job(rec)
+            if tracked:
+                get_run_registry().append_event(
+                    tracked["id"],
+                    "cancel",
+                    "Background shell job killed",
+                    payload={"job_id": job_id},
+                    owner=tracked.get("owner"),
+                )
+        except Exception:
+            pass
     return rec
 
 

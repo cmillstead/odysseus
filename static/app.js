@@ -23,6 +23,7 @@ import voiceRecorderModule from './js/voiceRecorder.js';
 import censorModule from './js/censor.js';
 import galleryModule from './js/gallery.js';
 import tasksModule from './js/tasks.js';
+import runsModule from './js/runs.js';
 import calendarModule from './js/calendar.js';
 import notesModule from './js/notes.js';
 import adminModule from './js/admin.js';
@@ -892,6 +893,15 @@ function initializeEventListeners() {
     });
   }
 
+  const toolRunsBtn = el('tool-runs-btn');
+  if (toolRunsBtn) {
+    toolRunsBtn.addEventListener('click', () => {
+      if (runsModule) {
+        runsModule.isRunsOpen() ? runsModule.closeRuns() : runsModule.openRuns();
+      }
+    });
+  }
+
   // Calendar tool button
   const toolCalendarBtn = el('tool-calendar-btn');
   if (toolCalendarBtn) {
@@ -1044,6 +1054,7 @@ function initializeEventListeners() {
     '/memory':   () => document.getElementById('tool-memory-btn')?.click(),
     '/gallery':  () => document.getElementById('tool-gallery-btn')?.click(),
     '/tasks':    () => document.getElementById('tool-tasks-btn')?.click(),
+    '/runs':     () => document.getElementById('tool-runs-btn')?.click(),
     '/library':  () => sessionModule && sessionModule.openLibrary && sessionModule.openLibrary(),
   };
   const _opener = _routeOpen[urlPath];
@@ -3385,6 +3396,7 @@ function startOdysseusApp() {
     compareModule.init(API_BASE);
   }
   researchPanelModule.init(API_BASE, markdownModule, sessionModule);
+  if (runsModule) runsModule.init(API_BASE, sessionModule, chatModule);
   // Initialize document editor module
   if (documentModule) {
     documentModule.init(API_BASE);
@@ -3417,6 +3429,7 @@ function startOdysseusApp() {
     'rail-tasks':     'tool-tasks-btn',
     'rail-calendar':  'tool-calendar-btn',
     'rail-notes':     'tool-notes-btn',
+    'rail-runs':      'tool-runs-btn',
     'rail-memory':    'tool-memory-btn',
     'rail-theme':     'tool-theme-btn',
     'rail-email':     'email-section-title',

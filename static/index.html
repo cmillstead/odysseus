@@ -139,6 +139,10 @@
         '/tasks':
           "<rect x='4' y='4' width='24' height='24' rx='3' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
           "<path d='M9 16 L14 21 L23 11' fill='none' stroke='" + ac + "' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>",
+        '/runs':
+          "<circle cx='16' cy='16' r='11' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
+          "<path d='M16 8 L16 16 L22 20' fill='none' stroke='" + ac + "' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>" +
+          "<path d='M7 8 L4 8 L4 5' fill='none' stroke='" + ac + "' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>",
         '/library':
           "<rect x='5' y='5' width='5' height='22' rx='1' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
           "<rect x='13' y='5' width='5' height='22' rx='1' fill='none' stroke='" + ac + "' stroke-width='2.5'/>" +
@@ -163,6 +167,7 @@
         '/memory': 'Memory — Odysseus',
         '/gallery': 'Gallery — Odysseus',
         '/tasks': 'Tasks — Odysseus',
+        '/runs': 'Runs — Odysseus',
         '/library': 'Library — Odysseus',
       };
       if (titles[path]) document.title = titles[path];
@@ -257,6 +262,7 @@
         <div class="memory-tabs">
           <button class="memory-tab active" data-memory-tab="browse"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>Memories <span id="memory-count" class="memory-count" style="font-size:0.8em;opacity:0.6;font-weight:normal;margin-left:4px">0</span></button>
           <button class="memory-tab" data-memory-tab="skills"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Skills <span id="skills-count" class="memory-count" style="font-size:0.8em;opacity:0.6;font-weight:normal;margin-left:4px">0</span></button>
+          <button class="memory-tab" data-memory-tab="pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>Pending <span id="learning-count" class="memory-count" style="font-size:0.8em;opacity:0.6;font-weight:normal;margin-left:4px">0</span></button>
           <button class="memory-tab" data-memory-tab="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Add</button>
           <button class="memory-tab" data-memory-tab="settings"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
         </div>
@@ -407,8 +413,54 @@
             <div id="skills-list" class="memory-list"></div>
           </div>
         </div>
+        <!-- ── Pending tab ── -->
+        <div class="memory-tab-panel hidden" data-memory-panel="pending">
+          <div class="admin-card" style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;">
+              <h2 style="display:flex;align-items:center;gap:6px;margin:0;padding:0;line-height:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent, var(--red));flex-shrink:0;"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>Pending <span id="learning-count-h2" class="memory-count" style="font-size:0.6em;opacity:0.6;font-weight:normal"></span></h2>
+              <span style="flex:1"></span>
+              <input id="learning-hermes-path" class="memory-search-input" type="text" placeholder="~/.hermes" title="Hermes import path" style="max-width:150px;height:26px;padding:3px 8px;font-size:12px;" />
+              <button id="learning-hermes-preview-btn" class="memory-toolbar-btn" title="Preview Hermes import"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/><circle cx="12" cy="12" r="3"/></svg>Preview</button>
+              <button id="learning-hermes-stage-btn" class="memory-toolbar-btn" title="Stage Hermes import"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Stage</button>
+              <button id="learning-curate-btn" class="memory-toolbar-btn" title="Stage curator proposals"><svg width="11" height="11" viewBox="0 0 24 24" fill="var(--accent, var(--red))" style="vertical-align:-1px;margin-right:3px;"><path d="M12 0L14.59 8.41L23 12L14.59 15.59L12 24L9.41 15.59L1 12L9.41 8.41Z"/></svg>Curate</button>
+              <button id="learning-approve-all-btn" class="memory-toolbar-btn save" title="Approve all pending proposals"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><path d="M20 6 9 17l-5-5"/></svg>Approve all</button>
+              <button id="learning-reject-all-btn" class="memory-toolbar-btn danger" title="Reject all pending proposals"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>Reject all</button>
+              <button id="learning-refresh-btn" class="memory-toolbar-btn" title="Refresh pending proposals"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>Refresh</button>
+            </div>
+            <div id="learning-proposals-list" class="memory-list"></div>
+          </div>
+        </div>
         <!-- ── Settings tab ── -->
         <div class="memory-tab-panel hidden" data-memory-panel="settings">
+          <div class="admin-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px">
+              <h2 style="margin:0;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="var(--accent, var(--red))" aria-hidden="true"><path d="M12 0L14.59 8.41L23 12L14.59 15.59L12 24L9.41 15.59L1 12L9.41 8.41Z"/></svg>Native learning</h2>
+              <label class="admin-switch" style="flex-shrink:0"><input type="checkbox" id="learning-enabled-toggle" /><span class="admin-slider"></span></label>
+            </div>
+            <span class="admin-toggle-sub" style="display:block;margin-top:6px">Stage learned memories and skills for review after useful turns.</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px">
+              <span class="admin-toggle-sub" style="margin:0">Background model</span>
+              <select id="learning-background-model-select" class="memory-edit-cat-select" aria-label="Learning background model" style="flex-shrink:0;max-width:150px">
+                <option value="auto">Auto</option>
+                <option value="utility">Utility</option>
+                <option value="session">Session</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px">
+              <h2 style="margin:0;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity:0.7"><path d="M20 6 9 17l-5-5"/></svg>Review memory writes</h2>
+              <label class="admin-switch" style="flex-shrink:0"><input type="checkbox" id="memory-write-approval-toggle" checked /><span class="admin-slider"></span></label>
+            </div>
+            <span class="admin-toggle-sub" style="display:block;margin-top:6px;opacity:0.6">When native learning is on, background memory writes become pending proposals.</span>
+          </div>
+          <div class="admin-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px">
+              <h2 style="margin:0;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity:0.7"><path d="M20 6 9 17l-5-5"/></svg>Review skill writes</h2>
+              <label class="admin-switch" style="flex-shrink:0"><input type="checkbox" id="skills-write-approval-toggle" checked /><span class="admin-slider"></span></label>
+            </div>
+            <span class="admin-toggle-sub" style="display:block;margin-top:6px;opacity:0.6">When native learning is on, learned skills stay pending until approved.</span>
+          </div>
           <div class="admin-card">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px">
               <h2 style="margin:0;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="var(--accent, var(--red))" aria-hidden="true"><path d="M12 0L14.59 8.41L23 12L14.59 15.59L12 24L9.41 15.59L1 12L9.41 8.41Z"/></svg>Auto-extract memories</h2>
@@ -694,6 +746,7 @@
     <button class="icon-rail-btn" id="rail-archive" title="Library"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6M9 11h4"/></svg></button>
     <button class="icon-rail-btn" id="rail-memory" title="Brain"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg></button>
     <button class="icon-rail-btn" id="rail-notes" title="Notes"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h5"/><path d="M8 17.5 15.5 10l2.5 2.5L10.5 20H8z"/></svg></button>
+    <button class="icon-rail-btn" id="rail-runs" title="Runs"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/><path d="M5 6H2V3"/></svg><span id="runs-rail-count" class="rail-count-badge" style="display:none"></span></button>
     <button class="icon-rail-btn" id="rail-tasks" title="Tasks"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg></button>
     <button class="icon-rail-btn" id="rail-theme" title="Theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20 5 5 0 0 0 5-5 3 3 0 0 0-3-3h-2a3 3 0 0 1-3-3 5 5 0 0 1 5-5"/></svg></button>
     <div style="flex:1"></div>
@@ -905,6 +958,17 @@
             <path d="M8 17.5 15.5 10l2.5 2.5L10.5 20H8z"/>
           </svg>
           <span class="grow">Notes</span>
+        </div>
+        <div class="list-item" id="tool-runs-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            style="flex-shrink:0;opacity:0.5;">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 7v5l4 2"/>
+            <path d="M5 6H2V3"/>
+          </svg>
+          <span class="grow">Runs</span>
+          <span id="runs-sidebar-count" class="sidebar-notif-dot" style="display:none"></span>
         </div>
         <div class="list-item" id="tool-tasks-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1141,6 +1205,11 @@
           </button>
         </div>
         <div class="chat-input-right">
+          <button type="button" class="input-icon-btn" title="Run current chat in background" id="run-background-btn" aria-label="Run current chat in background">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/><path d="M5 6H2V3"/>
+            </svg>
+          </button>
           <!-- Agent / Chat mode toggle -->
           <div class="mode-toggle">
             <button type="button" class="mode-toggle-btn active" id="mode-agent-btn" aria-pressed="true">Agent</button>
@@ -2463,6 +2532,7 @@
 <script type="module" src="/static/js/sessions.js"></script>
 <script type="module" src="/static/js/memory.js"></script>
 <script type="module" src="/static/js/skills.js"></script>
+<script type="module" src="/static/js/runs.js"></script>
 <script type="module" src="/static/js/tourHints.js"></script>
 <script type="module" src="/static/js/tourAutoplay.js"></script>
 <script type="module" src="/static/js/fileHandler.js"></script>
