@@ -12,20 +12,20 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 
 Milestone: v0.1 Backend Module Boundaries
 Phase: 1 of 3 — Low-risk domains (Documents, Auth)
-Plan: 01-01 (Documents) COMPLETE (loop closed, SUMMARY written); 01-02 (Auth) next
-Status: 01-01 loop closed → commit + PR pending, then PLAN/APPLY 01-02
-Last activity: 2026-07-01 — UNIFY 01-01: SUMMARY written, source-path lesson folded into CONVENTIONS.md + GROUND (Auth pre-audited: no repoints)
+Plan: 01-01 (Documents) SHIPPED (PR #3 merged to dev, `b049650`); 01-02 (Auth) next
+Status: 01-01 merged → PLAN/APPLY 01-02 (Auth) next
+Last activity: 2026-07-01 — 01-01 shipped: Codex review clean, full suite 4257 passed / 0 new failures, PR #3 merged to dev
 
 Progress:
-- Milestone: [███░░░░░░░] 33% by domain (3 of 9 merged; document built, PR pending)
+- Milestone: [████░░░░░░] 44% by domain (4 of 9 merged: email, gallery, research, document)
 - Phase 1: [█████░░░░░] 50% (1 of 2 plans complete)
 
 ## Loop Position
 
 Current loop state:
 ```
-PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ✓        ✓     [01-01 loop closed — next: 01-02]
+PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
+  ✓        ✓        ✓         ✓   [01-01 merged (PR #3) — next: 01-02 Auth]
 ```
 
 ## Accumulated Context
@@ -55,10 +55,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-01 15:55 UTC
-Stopped at: PAUL init + full v0.1 grounding — roadmap corrected (dropped ai_interaction phase; §4 domain boundaries; multi-file clusters only). GROUND-v0.1.md written.
-Next action: Run /paul:apply for 01-01 (Documents → routes/document/), then 01-02 (Auth).
-Resume file: .paul/phases/01-low-risk-domains/01-01-PLAN.md
+Last session: 2026-07-01 17:58 UTC
+Stopped at: 01-01 Documents SHIPPED — Codex review clean, full suite 4257 passed / 0 new failures, PR #3 merged to dev (`b049650`), local dev synced, PAUL state reconciled.
+Next action: Run /paul:apply for 01-02 (Auth → routes/auth/) off updated dev. Auth pre-audited: no source-path repoints (GROUND.md).
+Resume file: .paul/phases/01-low-risk-domains/01-02-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*
