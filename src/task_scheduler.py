@@ -351,7 +351,7 @@ class TaskScheduler:
         if not run_id:
             return
         try:
-            from core.database import SessionLocal, TaskRun
+            from core.database import SessionLocal, ScheduledTask, TaskRun
             db = SessionLocal()
             try:
                 run = db.query(TaskRun).filter(TaskRun.id == run_id).first()
@@ -385,6 +385,21 @@ class TaskScheduler:
                 run.result = run.result or message
                 run.finished_at = _utcnow()
                 db.commit()
+                try:
+                    task = db.query(ScheduledTask).filter(ScheduledTask.id == run.task_id).first()
+                    if task:
+                        from services.runs import get_run_registry
+                        tracked = get_run_registry().adopt_task_run(run, task)
+                        if tracked:
+                            get_run_registry().append_event(
+                                tracked["id"],
+                                "cancel",
+                                message,
+                                payload={"task_id": task.id, "task_run_id": run.id},
+                                owner=task.owner,
+                            )
+                except Exception:
+                    logger.debug("Run registry abort sync failed for %s", task_id, exc_info=True)
                 return True
             finally:
                 db.close()
@@ -711,7 +726,7 @@ class TaskScheduler:
         # semaphore so the UI can show that a manually-triggered task is in
         # line behind another. Once we acquire the slot, flip to "running"
         # and hand off to _execute_task_locked.
-        from core.database import SessionLocal, TaskRun
+        from core.database import SessionLocal, ScheduledTask, TaskRun
         current = asyncio.current_task()
         if current:
             self._task_handles[task_id] = current
@@ -727,6 +742,21 @@ class TaskScheduler:
             )
             _q_db.add(run)
             _q_db.commit()
+            try:
+                task_obj = _q_db.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
+                if task_obj:
+                    from services.runs import get_run_registry
+                    tracked = get_run_registry().adopt_task_run(run, task_obj)
+                    if tracked:
+                        get_run_registry().append_event(
+                            tracked["id"],
+                            "status",
+                            "Queued behind the task runner",
+                            payload={"task_id": task_id, "task_run_id": run_id},
+                            owner=task_obj.owner,
+                        )
+            except Exception:
+                logger.debug("Run registry queue sync failed for task %s", task_id, exc_info=True)
         except Exception:
             logger.exception(f"Failed to create queued run row for task {task_id}")
         finally:
@@ -767,6 +797,21 @@ class TaskScheduler:
                     stale.finished_at = _utcnow()
                     stale.error = f"Task no longer active (status={task.status if task else 'deleted'})"
                     db.commit()
+                    try:
+                        from services.runs import get_run_registry
+                        task_for_registry = task or db.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
+                        if task_for_registry:
+                            tracked = get_run_registry().adopt_task_run(stale, task_for_registry)
+                            if tracked:
+                                get_run_registry().append_event(
+                                    tracked["id"],
+                                    "status",
+                                    "Task skipped before execution",
+                                    payload={"task_id": task_id, "task_run_id": run_id},
+                                    owner=task_for_registry.owner,
+                                )
+                    except Exception:
+                        logger.debug("Run registry skip sync failed for task %s", task_id, exc_info=True)
                 return
 
             # Flip the run from queued → running. Reset started_at to the
@@ -778,6 +823,19 @@ class TaskScheduler:
                 run.started_at = _utcnow()
                 run.result = "Starting…"
                 db.commit()
+                try:
+                    from services.runs import get_run_registry
+                    tracked = get_run_registry().adopt_task_run(run, task)
+                    if tracked:
+                        get_run_registry().append_event(
+                            tracked["id"],
+                            "status",
+                            "Task execution started",
+                            payload={"task_id": task.id, "task_run_id": run_id},
+                            owner=task.owner,
+                        )
+                except Exception:
+                    logger.debug("Run registry start sync failed for task %s", task_id, exc_info=True)
             else:
                 # Defensive: row may have been wiped; recreate so the rest of
                 # the code can look it up by run_id without crashing.
@@ -790,6 +848,19 @@ class TaskScheduler:
                 )
                 db.add(run)
                 db.commit()
+                try:
+                    from services.runs import get_run_registry
+                    tracked = get_run_registry().adopt_task_run(run, task)
+                    if tracked:
+                        get_run_registry().append_event(
+                            tracked["id"],
+                            "status",
+                            "Task execution started",
+                            payload={"task_id": task.id, "task_run_id": run_id},
+                            owner=task.owner,
+                        )
+                except Exception:
+                    logger.debug("Run registry start sync failed for task %s", task_id, exc_info=True)
 
             task_type = task.task_type or "llm"
 
@@ -857,6 +928,20 @@ class TaskScheduler:
                 else:
                     task.next_run = None
                 db.commit()
+                try:
+                    from services.runs import get_run_registry
+                    if run_obj:
+                        tracked = get_run_registry().adopt_task_run(run_obj, task)
+                        if tracked:
+                            get_run_registry().append_event(
+                                tracked["id"],
+                                "cancel",
+                                "Task stopped by user",
+                                payload={"task_id": task.id, "task_run_id": run_id},
+                                owner=task.owner,
+                            )
+                except Exception:
+                    logger.debug("Run registry cancel sync failed for task %s", task_id, exc_info=True)
                 return
             except TaskNoop as noop:
                 # Action reported "nothing to do". Mark the run as `skipped`
@@ -880,6 +965,19 @@ class TaskScheduler:
                 else:
                     task.next_run = None
                 db.commit()
+                try:
+                    from services.runs import get_run_registry
+                    tracked = get_run_registry().adopt_task_run(run, task)
+                    if tracked:
+                        get_run_registry().append_event(
+                            tracked["id"],
+                            "status",
+                            "Task skipped",
+                            payload={"task_id": task.id, "task_run_id": run_id, "reason": str(noop)},
+                            owner=task.owner,
+                        )
+                except Exception:
+                    logger.debug("Run registry no-op sync failed for task %s", task_id, exc_info=True)
                 return
 
             run.finished_at = _utcnow()
@@ -904,6 +1002,19 @@ class TaskScheduler:
                 task.next_run = None
 
             db.commit()
+            try:
+                from services.runs import get_run_registry
+                tracked = get_run_registry().adopt_task_run(run, task)
+                if tracked:
+                    get_run_registry().append_event(
+                        tracked["id"],
+                        "complete" if run.status == "success" else "error",
+                        "Task completed" if run.status == "success" else "Task failed",
+                        payload={"task_id": task.id, "task_run_id": run_id, "status": run.status},
+                        owner=task.owner,
+                    )
+            except Exception:
+                logger.debug("Run registry completion sync failed for task %s", task_id, exc_info=True)
             logger.info(f"Task '{task.name}' completed (run {run_id})")
             output = task.output_target or "session"
             # Per-task notification gate. Default True (notifications_enabled
@@ -1000,6 +1111,22 @@ class TaskScheduler:
                         pass
                 try:
                     db.commit()
+                    try:
+                        from services.runs import get_run_registry
+                        _r_for_registry = db.query(TaskRun).filter(TaskRun.id == run_id).first()
+                        _t_for_registry = db.query(ScheduledTask).filter(ScheduledTask.id == task_id).first()
+                        if _r_for_registry and _t_for_registry:
+                            tracked = get_run_registry().adopt_task_run(_r_for_registry, _t_for_registry)
+                            if tracked:
+                                get_run_registry().append_event(
+                                    tracked["id"],
+                                    "error",
+                                    "Task failed",
+                                    payload={"task_id": task_id, "task_run_id": run_id},
+                                    owner=_t_for_registry.owner,
+                                )
+                    except Exception:
+                        logger.debug("Run registry error sync failed for task %s", task_id, exc_info=True)
                 except Exception as commit_err:
                     # Commit failed — without a fallback the run row stays
                     # "running" forever AND next_run stays in the past, so the

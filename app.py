@@ -609,6 +609,8 @@ memory_router = setup_memory_routes(memory_manager, session_manager, memory_vect
 app.include_router(memory_router)
 from routes.skills_routes import setup_skills_routes
 app.include_router(setup_skills_routes(skills_manager))
+from routes.learning_routes import setup_learning_routes
+app.include_router(setup_learning_routes(memory_manager, memory_vector, skills_manager))
 
 # Chat
 from routes.chat_routes import setup_chat_routes
@@ -702,6 +704,9 @@ app.include_router(setup_task_routes(task_scheduler))
 
 from routes.assistant_routes import setup_assistant_routes
 app.include_router(setup_assistant_routes(task_scheduler))
+
+from routes.run_routes import setup_run_routes
+app.include_router(setup_run_routes(task_scheduler=task_scheduler, research_handler=research_handler))
 
 # Calendar (CalDAV)
 from routes.calendar_routes import setup_calendar_routes
@@ -935,6 +940,13 @@ async def _startup_event():
             _db.close()
     except Exception as e:
         logger.debug(f"Incognito purge skipped: {e}")
+    try:
+        from services.runs import get_run_executor_manager
+        reconciled = get_run_executor_manager().reconcile_active_agent_runs()
+        if reconciled:
+            logger.info("Reconciled %d active agent run(s) on startup", len(reconciled))
+    except Exception as e:
+        logger.warning("Run startup reconciliation skipped: %s", e)
     # Strong refs to fire-and-forget startup tasks. Without this, Python may
     # GC tasks created with `asyncio.create_task(...)` before they finish.
     _startup_tasks: list[asyncio.Task] = getattr(app.state, "_startup_tasks", [])
@@ -1137,6 +1149,13 @@ async def _startup_event():
                 batch = int(get_setting("skill_audit_batch", 8) or 8)
                 from routes.skills_routes import run_scheduled_skill_audit
                 await run_scheduled_skill_audit(skills_manager, owner=None, max_skills=batch)
+                try:
+                    from services.memory.learning_review import stage_skill_curations
+                    staged = stage_skill_curations(skills_manager, owner=None, max_items=batch)
+                    if staged:
+                        logger.info("Nightly skill curator staged %d learning proposal(s)", len(staged))
+                except Exception as e:
+                    logger.warning(f"Nightly skill curator failed: {e}")
             except Exception as e:
                 logger.warning(f"Nightly skill audit failed: {e}")
 

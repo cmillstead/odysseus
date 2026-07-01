@@ -57,6 +57,12 @@ class ResearchHandler:
         llm_model: str,
         max_time: int = 300,
         llm_headers: dict = None,
+        max_rounds: int = 8,
+        search_provider: str | None = None,
+        category: str | None = None,
+        extraction_timeout: int | None = None,
+        extraction_concurrency: int | None = None,
+        owner: str | None = None,
     ) -> dict:
         """Start research as a background task. Returns task info dict."""
         # Cancel any existing research for this session
@@ -73,17 +79,68 @@ class ResearchHandler:
             "progress": {},
             "result": None,
             "started_at": time.time(),
+            "owner": owner,
+            "model": llm_model,
+            "category": category,
+            "search_provider": search_provider,
+            "max_rounds": max_rounds,
+            "extraction_timeout": extraction_timeout,
+            "extraction_concurrency": extraction_concurrency,
         }
         self._active_tasks[session_id] = entry
 
         def on_progress(event):
             entry["progress"] = event
+            now = time.time()
+            if now - float(entry.get("_last_run_sync", 0) or 0) < 2:
+                return
+            entry["_last_run_sync"] = now
+            try:
+                from services.runs import get_run_registry
+                run = get_run_registry().sync_research_entry(
+                    session_id,
+                    entry,
+                    owner=owner,
+                    model=llm_model,
+                    category=category,
+                )
+                if run:
+                    get_run_registry().append_event(
+                        run["id"],
+                        "progress",
+                        str((event or {}).get("message") or "Research progress"),
+                        payload=event if isinstance(event, dict) else {"event": event},
+                        owner=owner,
+                    )
+            except Exception:
+                logger.debug("Run registry research progress sync failed", exc_info=True)
+
+        try:
+            from services.runs import get_run_registry
+            run = get_run_registry().sync_research_entry(
+                session_id,
+                entry,
+                owner=owner,
+                model=llm_model,
+                category=category,
+            )
+            if run:
+                get_run_registry().append_event(
+                    run["id"],
+                    "status",
+                    "Research started",
+                    payload={"session_id": session_id, "query": query},
+                    owner=owner,
+                )
+        except Exception:
+            logger.debug("Run registry research start sync failed", exc_info=True)
 
         async def _run():
             try:
                 result = await self.call_research_service(
                     query, llm_endpoint, llm_model,
                     max_time=max_time,
+                    max_rounds=max_rounds,
                     progress_callback=on_progress,
                     _task_entry=entry,
                     llm_headers=llm_headers,
@@ -91,13 +148,70 @@ class ResearchHandler:
                 entry["result"] = result
                 entry["status"] = "done"
                 self._save_result(session_id, entry)
+                try:
+                    from services.runs import get_run_registry
+                    run = get_run_registry().sync_research_entry(
+                        session_id,
+                        entry,
+                        owner=owner,
+                        model=llm_model,
+                        category=category,
+                    )
+                    if run:
+                        get_run_registry().append_event(
+                            run["id"],
+                            "complete",
+                            "Research completed",
+                            payload={"session_id": session_id},
+                            owner=owner,
+                        )
+                except Exception:
+                    logger.debug("Run registry research completion sync failed", exc_info=True)
             except asyncio.CancelledError:
                 entry["status"] = "cancelled"
+                try:
+                    from services.runs import get_run_registry
+                    run = get_run_registry().sync_research_entry(
+                        session_id,
+                        entry,
+                        owner=owner,
+                        model=llm_model,
+                        category=category,
+                    )
+                    if run:
+                        get_run_registry().append_event(
+                            run["id"],
+                            "cancel",
+                            "Research cancelled",
+                            payload={"session_id": session_id},
+                            owner=owner,
+                        )
+                except Exception:
+                    logger.debug("Run registry research cancel sync failed", exc_info=True)
                 raise
             except Exception as e:
                 logger.error(f"Background research failed: {e}", exc_info=True)
                 entry["result"] = str(e)
                 entry["status"] = "error"
+                try:
+                    from services.runs import get_run_registry
+                    run = get_run_registry().sync_research_entry(
+                        session_id,
+                        entry,
+                        owner=owner,
+                        model=llm_model,
+                        category=category,
+                    )
+                    if run:
+                        get_run_registry().append_event(
+                            run["id"],
+                            "error",
+                            "Research failed",
+                            payload={"session_id": session_id, "error": str(e)},
+                            owner=owner,
+                        )
+                except Exception:
+                    logger.debug("Run registry research error sync failed", exc_info=True)
 
         task = asyncio.create_task(_run())
         entry["task"] = task
@@ -112,6 +226,8 @@ class ResearchHandler:
                 "progress": entry["progress"],
                 "query": entry["query"],
                 "started_at": entry["started_at"],
+                "owner": entry.get("owner"),
+                "category": entry.get("category"),
             }
         # Check disk for completed research
         path = RESEARCH_DATA_DIR / f"{session_id}.json"
@@ -123,6 +239,8 @@ class ResearchHandler:
                     "progress": {},
                     "query": data.get("query", ""),
                     "started_at": data.get("started_at", 0),
+                    "owner": data.get("owner"),
+                    "category": data.get("category"),
                 }
             except Exception:
                 pass
@@ -142,6 +260,25 @@ class ResearchHandler:
         if task and not task.done():
             task.cancel()
         entry["status"] = "cancelled"
+        try:
+            from services.runs import get_run_registry
+            run = get_run_registry().sync_research_entry(
+                session_id,
+                entry,
+                owner=entry.get("owner"),
+                model=entry.get("model"),
+                category=entry.get("category"),
+            )
+            if run:
+                get_run_registry().append_event(
+                    run["id"],
+                    "cancel",
+                    "Research cancellation requested",
+                    payload={"session_id": session_id},
+                    owner=entry.get("owner"),
+                )
+        except Exception:
+            logger.debug("Run registry research cancel request sync failed", exc_info=True)
         return True
 
     def get_result(self, session_id: str) -> Optional[str]:
@@ -222,6 +359,10 @@ class ResearchHandler:
                 "sources": sources,
                 "started_at": entry["started_at"],
                 "completed_at": time.time(),
+                "owner": entry.get("owner"),
+                "model": entry.get("model"),
+                "category": entry.get("category") or "",
+                "search_provider": entry.get("search_provider"),
             }
             path.write_text(json.dumps(data), encoding="utf-8")
             logger.info(f"Research result saved to {path}")
@@ -234,6 +375,7 @@ class ResearchHandler:
         llm_endpoint: str,
         llm_model: str,
         max_time: int = 300,
+        max_rounds: int = 8,
         progress_callback=None,
         _task_entry: dict = None,
         llm_headers: dict = None,
@@ -264,7 +406,7 @@ class ResearchHandler:
                 llm_endpoint=llm_endpoint,
                 llm_model=llm_model,
                 llm_headers=llm_headers,
-                max_rounds=8,
+                max_rounds=max(1, min(int(max_rounds or 8), 20)),
                 max_time=max_time,
                 max_report_tokens=int(get_setting("research_max_tokens", 8192)),
                 progress_callback=progress_callback,

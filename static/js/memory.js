@@ -15,6 +15,7 @@ let activeCategory = 'all';
 let sortOrder = 'newest';
 let selectMode = false;
 let selectedIds = new Set();
+let learningProposals = [];
 
 
 const MEMORY_CATEGORIES = ['fact', 'identity', 'preference', 'contact', 'project', 'goal', 'task'];
@@ -189,6 +190,10 @@ async function syncToggles() {
   // toggling it did nothing, so skills stayed on). Now it actually gates skill
   // injection (see chat_helpers.py: uprefs.skills_enabled).
   await syncPrefToggle('skills-enabled-header-toggle', 'skills_enabled', 'Skills enabled', 'Skills disabled', false);
+  await syncPrefToggle('learning-enabled-toggle', 'learning_enabled', 'Native learning enabled', 'Native learning disabled', false, false);
+  await syncPrefToggle('memory-write-approval-toggle', 'memory_write_approval', 'Memory writes require review', 'Memory writes can auto-apply', false, true);
+  await syncPrefToggle('skills-write-approval-toggle', 'skills_write_approval', 'Skill writes require review', 'Skill writes can auto-apply', false, true);
+  await syncPrefSelect('learning-background-model-select', 'learning_background_model', 'auto');
   await syncPrefToggle('auto-memory-toggle', 'auto_memory', 'Auto-extract memories enabled', 'Auto-extract memories disabled', false);
   await syncPrefToggle('auto-skills-toggle', 'auto_skills', 'Auto-extract skills enabled', 'Auto-extract skills disabled', false);
   await syncPrefToggle('auto-approve-skills-toggle', 'auto_approve_skills', 'Auto-approve skills enabled', 'Auto-approve skills disabled', false);
@@ -327,14 +332,46 @@ async function syncPrefNumber(elementId, prefKey, defaultVal) {
   }
 }
 
-async function syncPrefToggle(elementId, prefKey, onMsg, offMsg, dimBelow = true) {
+async function syncPrefSelect(elementId, prefKey, defaultVal) {
+  const select = document.getElementById(elementId);
+  if (!select) return;
+  try {
+    const res = await fetch(`${window.location.origin}/api/prefs/${prefKey}`);
+    if (res.ok) {
+      const data = await res.json();
+      const val = data.value === undefined || data.value === null ? defaultVal : String(data.value);
+      if (Array.from(select.options).some(o => o.value === val)) select.value = val;
+    }
+  } catch (e) {
+    console.error(`Failed to load ${prefKey} pref:`, e);
+  }
+  if (!select.dataset.bound) {
+    select.dataset.bound = '1';
+    select.addEventListener('change', async () => {
+      try {
+        const res = await fetch(`${window.location.origin}/api/prefs/${prefKey}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: select.value })
+        });
+        if (!res.ok) { showError('Failed to save preference'); return; }
+        showToast(`Learning model: ${select.value}`);
+      } catch (e) {
+        console.error(`Failed to save ${prefKey} pref:`, e);
+        showError('Failed to save preference');
+      }
+    });
+  }
+}
+
+async function syncPrefToggle(elementId, prefKey, onMsg, offMsg, dimBelow = true, defaultVal = true) {
   const toggle = document.getElementById(elementId);
   if (!toggle) return;
   try {
     const res = await fetch(`${window.location.origin}/api/prefs/${prefKey}`);
     if (res.ok) {
       const data = await res.json();
-      toggle.checked = data.value !== false;
+      toggle.checked = data.value === undefined || data.value === null ? defaultVal : data.value !== false;
     }
   } catch (e) {
     console.error(`Failed to load ${prefKey} pref:`, e);
@@ -365,6 +402,196 @@ async function syncPrefToggle(elementId, prefKey, onMsg, offMsg, dimBelow = true
         showError('Failed to save preference');
       }
     });
+  }
+}
+
+function updateLearningCount() {
+  const total = learningProposals.length;
+  const tabCount = document.getElementById('learning-count');
+  const h2Count = document.getElementById('learning-count-h2');
+  if (tabCount) tabCount.textContent = String(total);
+  if (h2Count) h2Count.textContent = `${total} ${total === 1 ? 'proposal' : 'proposals'}`;
+}
+
+function learningProposalTitle(p) {
+  const kind = (p.kind || 'proposal').toLowerCase();
+  const action = (p.action || '').toLowerCase();
+  if (kind === 'memory') return `${action || 'change'} memory`;
+  if (kind === 'skill') return `${action || 'change'} skill`;
+  return `${action} ${kind}`.trim();
+}
+
+function learningProposalBody(p) {
+  const payload = p.payload || {};
+  if (p.kind === 'memory') {
+    return payload.text || payload.memory_id || '';
+  }
+  if (p.kind === 'skill') {
+    return payload.name || payload.description || (payload.markdown ? 'SKILL.md proposal' : '');
+  }
+  return '';
+}
+
+function renderLearningProposals() {
+  const list = document.getElementById('learning-proposals-list');
+  if (!list) return;
+  updateLearningCount();
+  if (!learningProposals.length) {
+    list.innerHTML = '<div class="memory-empty">No pending proposals.</div>';
+    return;
+  }
+  list.innerHTML = learningProposals.map(p => {
+    const conf = Math.round(Number(p.confidence || 0) * 100);
+    const created = p.created_at ? relativeTime(Number(p.created_at)) : '';
+    return `
+      <div class="learning-proposal-item" data-learning-id="${escapeHtml(p.id)}">
+        <div class="learning-proposal-main">
+          <div class="learning-proposal-kicker">
+            <span>${escapeHtml(learningProposalTitle(p))}</span>
+            <span>${conf}%</span>
+            ${created ? `<span>${escapeHtml(created)}</span>` : ''}
+          </div>
+          <div class="learning-proposal-summary">${escapeHtml(p.summary || '')}</div>
+          <div class="learning-proposal-body">${escapeHtml(learningProposalBody(p))}</div>
+          <pre class="learning-proposal-diff hidden"></pre>
+        </div>
+        <div class="learning-proposal-actions">
+          <button class="memory-item-btn learning-diff-btn" type="button">diff</button>
+          <button class="memory-item-btn save learning-approve-btn" type="button">approve</button>
+          <button class="memory-item-btn delete learning-reject-btn" type="button">reject</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+export async function loadLearningProposals() {
+  try {
+    const res = await fetch(`${window.location.origin}/api/learning/pending`);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    learningProposals = Array.isArray(data.proposals) ? data.proposals : [];
+  } catch (e) {
+    console.error('Failed to load learning proposals:', e);
+    learningProposals = [];
+    showError('Failed to load pending proposals');
+  }
+  renderLearningProposals();
+}
+
+async function toggleLearningDiff(id, item) {
+  const pre = item.querySelector('.learning-proposal-diff');
+  if (!pre) return;
+  if (!pre.classList.contains('hidden')) {
+    pre.classList.add('hidden');
+    return;
+  }
+  if (!pre.dataset.loaded) {
+    pre.textContent = 'Loading diff...';
+    pre.classList.remove('hidden');
+    try {
+      const res = await fetch(`${window.location.origin}/api/learning/pending/${encodeURIComponent(id)}/diff`);
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = await res.json();
+      pre.textContent = data.diff || '(no diff)';
+      pre.dataset.loaded = '1';
+    } catch (e) {
+      console.error('Failed to load proposal diff:', e);
+      pre.textContent = 'Failed to load diff';
+    }
+  } else {
+    pre.classList.remove('hidden');
+  }
+}
+
+async function actOnLearningProposal(id, action) {
+  try {
+    const res = await fetch(`${window.location.origin}/api/learning/pending/${encodeURIComponent(id)}/${action}`, {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `status ${res.status}`);
+    }
+    const proposal = learningProposals.find(p => p.id === id);
+    learningProposals = learningProposals.filter(p => p.id !== id);
+    renderLearningProposals();
+    if (action === 'approve') {
+      if (proposal?.kind === 'memory') await loadMemories();
+      if (proposal?.kind === 'skill') {
+        import('./skills.js').then(m => { if (m.loadSkills) m.loadSkills(false); else if (m.default?.loadSkills) m.default.loadSkills(false); });
+      }
+    }
+    showToast(action === 'approve' ? 'Proposal approved' : 'Proposal rejected');
+  } catch (e) {
+    console.error(`Failed to ${action} proposal:`, e);
+    showError(`Failed to ${action} proposal`);
+  }
+}
+
+async function refreshLearningTargets() {
+  await loadMemories();
+  import('./skills.js').then(m => { if (m.loadSkills) m.loadSkills(false); else if (m.default?.loadSkills) m.default.loadSkills(false); });
+}
+
+async function bulkLearningAction(action) {
+  if (action === 'reject' && learningProposals.length) {
+    const ok = await uiModule.styledConfirm(`Reject ${learningProposals.length} pending ${learningProposals.length === 1 ? 'proposal' : 'proposals'}?`, { confirmText: 'Reject', danger: true });
+    if (!ok) return;
+  }
+  try {
+    const endpoint = action === 'approve' ? 'approve-all' : 'reject-all';
+    const res = await fetch(`${window.location.origin}/api/learning/pending/${endpoint}`, { method: 'POST' });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    await loadLearningProposals();
+    if (action === 'approve') await refreshLearningTargets();
+    const count = action === 'approve' ? (data.approved || 0) : (data.rejected || 0);
+    showToast(`${count} ${count === 1 ? 'proposal' : 'proposals'} ${action === 'approve' ? 'approved' : 'rejected'}`);
+  } catch (e) {
+    console.error(`Failed to ${action} learning proposals:`, e);
+    showError(`Failed to ${action} proposals`);
+  }
+}
+
+async function curateLearningProposals() {
+  try {
+    const res = await fetch(`${window.location.origin}/api/learning/curate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_items: 20 })
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    await loadLearningProposals();
+    showToast(`${data.count || 0} curator ${Number(data.count || 0) === 1 ? 'proposal' : 'proposals'} staged`);
+  } catch (e) {
+    console.error('Failed to curate learning proposals:', e);
+    showError('Failed to run curator');
+  }
+}
+
+async function hermesImport(stage = false) {
+  const input = document.getElementById('learning-hermes-path');
+  const basePath = (input?.value || '').trim() || '~/.hermes';
+  try {
+    const res = await fetch(`${window.location.origin}/api/learning/hermes/${stage ? 'stage' : 'preview'}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base_path: basePath, source_name: 'hermes' })
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    const summary = data.summary || {};
+    const count = stage ? (data.staged_count || 0) : (summary.proposal_count || 0);
+    if (stage) await loadLearningProposals();
+    showToast(stage
+      ? `${count} Hermes ${count === 1 ? 'proposal' : 'proposals'} staged`
+      : `${count} Hermes ${count === 1 ? 'proposal' : 'proposals'} found`);
+    if ((summary.warning_count || 0) > 0) console.warn('Hermes import warnings:', data.warnings || []);
+  } catch (e) {
+    console.error('Failed to import Hermes data:', e);
+    showError(stage ? 'Failed to stage Hermes import' : 'Failed to preview Hermes import');
   }
 }
 
@@ -1461,6 +1688,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (target === 'skills') {
         import('./skills.js').then(m => { if (m.loadSkills) m.loadSkills(true); else if (m.default?.loadSkills) m.default.loadSkills(true); });
       }
+      if (target === 'pending') {
+        loadLearningProposals();
+      }
     });
   });
 
@@ -1498,6 +1728,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const bulkCancelBtn = document.getElementById('memory-bulk-cancel');
   if (bulkCancelBtn) bulkCancelBtn.addEventListener('click', exitSelectMode);
 
+  const learningRefreshBtn = document.getElementById('learning-refresh-btn');
+  if (learningRefreshBtn) learningRefreshBtn.addEventListener('click', loadLearningProposals);
+
+  const learningApproveAllBtn = document.getElementById('learning-approve-all-btn');
+  if (learningApproveAllBtn) learningApproveAllBtn.addEventListener('click', () => bulkLearningAction('approve'));
+
+  const learningRejectAllBtn = document.getElementById('learning-reject-all-btn');
+  if (learningRejectAllBtn) learningRejectAllBtn.addEventListener('click', () => bulkLearningAction('reject'));
+
+  const learningCurateBtn = document.getElementById('learning-curate-btn');
+  if (learningCurateBtn) learningCurateBtn.addEventListener('click', curateLearningProposals);
+
+  const hermesPreviewBtn = document.getElementById('learning-hermes-preview-btn');
+  if (hermesPreviewBtn) hermesPreviewBtn.addEventListener('click', () => hermesImport(false));
+
+  const hermesStageBtn = document.getElementById('learning-hermes-stage-btn');
+  if (hermesStageBtn) hermesStageBtn.addEventListener('click', () => hermesImport(true));
+
+  const learningList = document.getElementById('learning-proposals-list');
+  if (learningList) learningList.addEventListener('click', (e) => {
+    const item = e.target.closest('.learning-proposal-item');
+    if (!item) return;
+    const id = item.dataset.learningId;
+    if (!id) return;
+    if (e.target.closest('.learning-diff-btn')) toggleLearningDiff(id, item);
+    if (e.target.closest('.learning-approve-btn')) actOnLearningProposal(id, 'approve');
+    if (e.target.closest('.learning-reject-btn')) actOnLearningProposal(id, 'reject');
+  });
+
   const exportBtn = document.getElementById('memory-export-btn');
   if (exportBtn) exportBtn.addEventListener('click', exportMemories);
 
@@ -1512,6 +1771,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('memory-refresh', () => {
     loadMemories();
   });
+
+  loadLearningProposals();
 });
 
 const memoryModule = {
@@ -1522,6 +1783,7 @@ const memoryModule = {
   editMemory,
   deleteMemory,
   extractMemory,
+  loadLearningProposals,
   buildCategoryChips,
   tidyMemories,
   importMemories,

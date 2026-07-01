@@ -64,6 +64,17 @@ def _spawn_bg(coro) -> asyncio.Task:
     return task
 
 
+def _resolve_learning_endpoint(sess, owner: Optional[str], mode: str):
+    mode = (mode or "auto").strip().lower()
+    if mode == "session":
+        return sess.endpoint_url, sess.model, sess.headers
+    if mode == "utility":
+        from src.endpoint_resolver import resolve_endpoint
+        return resolve_endpoint("utility", sess.endpoint_url, sess.model, sess.headers, owner=owner)
+    from src.task_endpoint import resolve_task_endpoint
+    return resolve_task_endpoint(sess.endpoint_url, sess.model, sess.headers, owner=owner)
+
+
 # ── Data containers ────────────────────────────────────────────────────── #
 
 @dataclass
@@ -1155,11 +1166,28 @@ def run_post_response_tasks(
     turn's request too.
     """
     _extraction_jobs: list = []
+    learning_enabled = bool(uprefs.get("learning_enabled", False))
+    memory_write_approval = bool(uprefs.get("memory_write_approval", True))
+    skills_write_approval = bool(uprefs.get("skills_write_approval", True))
+    can_stage_learning = (
+        learning_enabled
+        and allow_background_extraction
+        and not incognito
+        and not compare_mode
+    )
 
     # Memory extraction — only every 4th message pair to avoid excess LLM calls
     _msg_count = len(sess.history) if hasattr(sess, 'history') else 0
     _should_extract = (_msg_count >= 4) and (_msg_count % 4 == 0)
-    if allow_background_extraction and not incognito and not compare_mode and _should_extract and uprefs.get("auto_memory", True):
+    auto_memory_enabled = bool(uprefs.get("auto_memory", True))
+    if (
+        allow_background_extraction
+        and not incognito
+        and not compare_mode
+        and _should_extract
+        and auto_memory_enabled
+        and not can_stage_learning
+    ):
         from services.memory.memory_extractor import extract_and_store
         from src.task_endpoint import resolve_task_endpoint
         t_url, t_model, t_headers = resolve_task_endpoint(
@@ -1184,14 +1212,16 @@ def run_post_response_tasks(
         extract_skills, auto_skills_enabled, incognito, compare_mode,
         agent_rounds, agent_tool_calls, "set" if skills_manager else "MISSING",
     )
-    if (
+    skill_direct_write = (
         extract_skills
         and allow_background_extraction
         and auto_skills_enabled
         and not incognito
         and not compare_mode
         and (agent_rounds >= 2 or agent_tool_calls >= 2)
-    ):
+    )
+    learning_can_handle_skills = can_stage_learning and skill_direct_write and skills_manager is not None
+    if skill_direct_write and not learning_can_handle_skills:
         if skills_manager is None:
             logger.warning(
                 "[skill-extract] gate PASSED but skills_manager is None — "
@@ -1210,6 +1240,37 @@ def run_post_response_tasks(
                 agent_rounds, agent_tool_calls,
                 owner=owner,
             )))
+
+    learning_include_memory = (
+        can_stage_learning
+        and auto_memory_enabled
+        and _should_extract
+    )
+    learning_include_skills = (
+        learning_can_handle_skills
+    )
+    if learning_include_memory or learning_include_skills:
+        from services.memory.learning_review import review_session_for_learning
+        l_url, l_model, l_headers = _resolve_learning_endpoint(
+            sess,
+            owner,
+            str(uprefs.get("learning_background_model") or "auto"),
+        )
+        _extraction_jobs.append(("learning", review_session_for_learning(
+            sess,
+            endpoint_url=l_url,
+            model=l_model,
+            headers=l_headers,
+            owner=owner,
+            source_session_id=session_id,
+            include_memory=learning_include_memory,
+            include_skills=learning_include_skills,
+            memory_manager=memory_manager,
+            memory_vector=memory_vector,
+            skills_manager=skills_manager,
+            auto_apply_memory=not memory_write_approval,
+            auto_apply_skills=not skills_write_approval,
+        )))
 
     if _extraction_jobs:
         _spawn_bg(_run_extraction_jobs_sequentially(session_id, _extraction_jobs))

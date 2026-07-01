@@ -24,6 +24,7 @@ from core.database import (
     Note,
     ScheduledTask,
     TaskRun,
+    RunRecord,
     Document,
     DocumentVersion,
     GalleryImage,
@@ -132,6 +133,7 @@ def setup_admin_wipe_routes(session_manager):
             if kind == "tasks":
                 # TaskRun rows reference tasks via FK — clear them first.
                 db.query(TaskRun).delete()
+                db.query(RunRecord).filter(RunRecord.run_type == "scheduled_task").delete(synchronize_session=False)
                 count = db.query(ScheduledTask).count()
                 db.query(ScheduledTask).delete()
                 db.commit()

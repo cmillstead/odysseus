@@ -670,6 +670,86 @@ class TaskRun(Base):
     )
 
 
+class RunRecord(TimestampMixin, Base):
+    """Unified record for long-running work across Odysseus executors."""
+    __tablename__ = "runs"
+
+    id             = Column(String, primary_key=True, index=True)
+    owner          = Column(String, nullable=True, index=True)
+    run_type       = Column(String, nullable=False, index=True)  # agent | background_shell | research | scheduled_task | skill_audit | learning_review
+    status         = Column(String, nullable=False, default="queued", index=True)
+    title          = Column(String, nullable=False, default="Untitled Run")
+    objective      = Column(Text, nullable=True)
+    origin         = Column(String, nullable=True)
+    executor       = Column(String, nullable=True)
+    backend        = Column(String, nullable=True)
+    model          = Column(String, nullable=True)
+    session_id     = Column(String, ForeignKey("sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    parent_run_id  = Column(String, ForeignKey("runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    external_type  = Column(String, nullable=True, index=True)
+    external_id    = Column(String, nullable=True, index=True)
+    current_step   = Column(Text, nullable=True)
+    summary        = Column(Text, nullable=True)
+    error          = Column(Text, nullable=True)
+    approval_state = Column(String, nullable=False, default="none")
+    meta_data      = Column("metadata", Text, nullable=True)
+    started_at     = Column(DateTime, nullable=True)
+    finished_at    = Column(DateTime, nullable=True)
+
+    session = relationship("Session", backref=backref("runs", cascade="save-update, merge"))
+    parent_run = relationship("RunRecord", remote_side=[id], foreign_keys=[parent_run_id])
+
+    __table_args__ = (
+        Index('ix_runs_owner_status', 'owner', 'status', 'updated_at'),
+        Index('ix_runs_external', 'external_type', 'external_id'),
+    )
+
+
+class RunEvent(Base):
+    """Append-only timeline item for a RunRecord."""
+    __tablename__ = "run_events"
+
+    id              = Column(String, primary_key=True, index=True)
+    run_id          = Column(String, ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner           = Column(String, nullable=True, index=True)
+    event_type      = Column(String, nullable=False, index=True)
+    message         = Column(Text, nullable=True)
+    payload         = Column(Text, nullable=True)
+    approval_id     = Column(String, nullable=True, index=True)
+    approval_status = Column(String, nullable=True)
+    created_at      = Column(DateTime, nullable=False, default=utcnow_naive, index=True)
+
+    run = relationship("RunRecord", backref=backref("events", cascade="all, delete-orphan",
+                       order_by="RunEvent.created_at.asc()"))
+
+    __table_args__ = (
+        Index('ix_run_events_run_time', 'run_id', 'created_at'),
+    )
+
+
+class RunArtifact(Base):
+    """Artifact metadata attached to a long-running run."""
+    __tablename__ = "run_artifacts"
+
+    id            = Column(String, primary_key=True, index=True)
+    run_id        = Column(String, ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner         = Column(String, nullable=True, index=True)
+    artifact_type = Column(String, nullable=False, default="file")
+    name          = Column(String, nullable=False)
+    uri           = Column(Text, nullable=True)
+    path          = Column(Text, nullable=True)
+    mime_type     = Column(String, nullable=True)
+    meta_data     = Column("metadata", Text, nullable=True)
+    created_at    = Column(DateTime, nullable=False, default=utcnow_naive, index=True)
+
+    run = relationship("RunRecord", backref=backref("artifacts", cascade="all, delete-orphan",
+                       order_by="RunArtifact.created_at.asc()"))
+
+    __table_args__ = (
+        Index('ix_run_artifacts_run_time', 'run_id', 'created_at'),
+    )
+
+
 class Memory(Base):
     """
     SQLAlchemy model for Memory table.
@@ -1262,7 +1342,7 @@ def _migrate_assign_legacy_owner():
             "calendars", "calendar_events", "integrations",
             "scheduled_tasks", "task_runs", "crew_members",
             "gallery_albums", "gallery_people", "user_tool_data",
-            "api_tokens", "webhooks",
+            "api_tokens", "webhooks", "runs", "run_events", "run_artifacts",
         ]
         for table in tables:
             try:
