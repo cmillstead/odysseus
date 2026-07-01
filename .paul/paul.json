@@ -1,0 +1,25 @@
+{
+  "name": "odysseus-backend-refactor",
+  "version": "0.0.0",
+  "milestone": {
+    "name": "v0.1 Backend Module Boundaries",
+    "version": "0.1.0",
+    "status": "in_progress"
+  },
+  "phase": {
+    "number": 1,
+    "name": "Low-risk domains",
+    "status": "in_progress"
+  },
+  "loop": {
+    "plan": null,
+    "position": "IDLE"
+  },
+  "timestamps": {
+    "created_at": "2026-07-01T15:55:00Z",
+    "updated_at": "2026-07-01T16:20:00Z"
+  },
+  "satellite": {
+    "groom": true
+  }
+}
