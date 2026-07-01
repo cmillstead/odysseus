@@ -771,7 +771,7 @@ from routes.note_routes import setup_note_routes
 app.include_router(setup_note_routes(task_scheduler))
 
 # Email
-from routes.email_routes import setup_email_routes
+from routes.email.routes import setup_email_routes
 email_router = setup_email_routes()
 app.include_router(email_router)
 
