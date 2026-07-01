@@ -57,6 +57,19 @@ Documents (many patch targets), hence 01-02 (after Documents warms the pattern).
 - Specifically: `test_api_token_routes.py` (delitem+reimport), `test_device_flow_routes.py`
   (patch via `routes.device_flow`), and the document `SessionLocal` patch tests.
 
+## Source-path introspection audit (added post-01-01, per CONVENTIONS.md)
+
+`grep -rn "auth_routes.py\|api_token_routes.py\|device_flow.py" tests` — all hits are BENIGN
+for 01-02 (no repoint needed):
+- `test_pr_blocker_audit.py` (449/532/567/792) — `"routes/auth_routes.py"` is **fixture data**
+  (a simulated changed-files list for audit logic), not a source read.
+- `test_app.py:81-82` — asserts `routes/auth_routes.py` **exists**; the shim keeps that path
+  present, so it still passes (and stays meaningful — the back-compat path must exist).
+- No `read_text()` / `_function_source()` **content assertion** on auth source (unlike the
+  Documents case). So 01-02 has no source-path repoint task.
+
+Backstop remains: 01-02 APPLY must still run the full suite (Qualify) to confirm.
+
 ## Convention applied
 
 Per `.paul/CONVENTIONS.md`: `routes/document/{routes,helpers}.py`;

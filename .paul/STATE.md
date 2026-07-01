@@ -12,20 +12,20 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 
 Milestone: v0.1 Backend Module Boundaries
 Phase: 1 of 3 — Low-risk domains (Documents, Auth)
-Plan: 2 plans written (01-01 Documents, 01-02 Auth); none applied yet
-Status: PLAN complete → ready for APPLY (start 01-01)
-Last activity: 2026-07-01 — Phase 1 pre-planning chain (ASSUMPTIONS→DISCOVERY→GROUND) + 2 PLANs written; CONVENTIONS.md set
+Plan: 01-01 (Documents) COMPLETE (loop closed, SUMMARY written); 01-02 (Auth) next
+Status: 01-01 loop closed → commit + PR pending, then PLAN/APPLY 01-02
+Last activity: 2026-07-01 — UNIFY 01-01: SUMMARY written, source-path lesson folded into CONVENTIONS.md + GROUND (Auth pre-audited: no repoints)
 
 Progress:
-- Milestone: [███░░░░░░░] 33% by domain (3 of 9 multi-file domains done: email, gallery, research)
-- Phase 1: [░░░░░░░░░░] 0% (0 of 2 plans applied)
+- Milestone: [███░░░░░░░] 33% by domain (3 of 9 merged; document built, PR pending)
+- Phase 1: [█████░░░░░] 50% (1 of 2 plans complete)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ◉        ○     [Plans ready — APPLY next]
+  ✓        ✓        ✓     [01-01 loop closed — next: 01-02]
 ```
 
 ## Accumulated Context

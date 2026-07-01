@@ -9,15 +9,15 @@
   "phase": {
     "number": 1,
     "name": "Low-risk domains",
-    "status": "planned"
+    "status": "in_progress"
   },
   "loop": {
-    "plan": "01-01",
-    "position": "APPLY_READY"
+    "plan": null,
+    "position": "IDLE"
   },
   "timestamps": {
     "created_at": "2026-07-01T15:55:00Z",
-    "updated_at": "2026-07-01T16:05:00Z"
+    "updated_at": "2026-07-01T16:20:00Z"
   },
   "satellite": {
     "groom": true

@@ -36,6 +36,31 @@ routes/api_token_routes.py         → shim
 routes/device_flow.py              → shim   (load-bearing: chatgpt_subscription imports it)
 ```
 
+## Source-path introspection tests MUST be repointed (learned 01-01)
+
+Some tests read a route module's **source by file path** and assert on its contents —
+`Path("routes/<x>.py").read_text()`, `_function_source("routes/<x>.py", "fn")`,
+`(ROOT / "routes" / "<x>.py").read_text()`. These do NOT `import` the module, so the
+import/patch grep in GROUND misses them — and after a move they read the **shim**, not the
+real source. Two failure modes:
+- **Presence assertion** (`assert "foo(" in source`) → FAILS loudly (shim lacks the code).
+- **Absence assertion** (`assert "bar" not in source`) → passes **vacuously** (silent rot).
+
+**Mandatory GROUND step per domain** — before planning, grep for source-path literals and list
+every hit as a repoint task:
+```
+grep -rn "<domain>_routes.py\|<domain>_helpers.py\|routes/<domain>_" tests
+```
+Repoint each hit from the old flat path to the new canonical path
+(`routes/<domain>/routes.py`, etc.) in the same PR. Add these test files to the plan's
+`files_modified`.
+
+Evidence (01-01 Documents): the import/patch grep found 0 such tests, but the full suite
+surfaced 2 (`test_model_helper_owner_scope.py`, `test_vision_owner_scope.py`) + 1 pre-existing
+vacuous one the email refactor had left (`test_imap_mailbox_quoting.py` reading
+`routes/email_pollers.py`). Qualify's full-suite run is the backstop, but grepping source-path
+literals up front turns a mid-APPLY GAP into a planned task.
+
 ## Spec numbers are ESTIMATES — re-derive at plan time (do NOT trust)
 
 `specs/architecture-runtime-inventory.md` (§2/§4/§6) reports line counts, file lists,
