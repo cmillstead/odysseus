@@ -38,6 +38,7 @@ PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
 | v0.1 = finish Slice 1 + all Slice 2 | Defers agent_loop / src-layering / database to later milestones |
 | `sys.modules` alias shim pattern | Preserves import paths + `mock.patch` targets across every move |
 | One domain per PR | Atomic, reviewable, behavior-preserving slices |
+| 2026-07-01: 02-01 Calendar/Contacts = TWO SEPARATE packages | Files share zero code (no mutual import, no shared helper, distinct CalDAV/CardDAV stacks) → `routes/calendar/` + `routes/contacts/`, not co-located |
 
 ### Deferred Issues
 
