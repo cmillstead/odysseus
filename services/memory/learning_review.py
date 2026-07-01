@@ -1018,7 +1018,12 @@ def _read_text_file(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
 
 
-def _collect_skill_bundle_files(skill_path: Path, warnings: list[dict[str, str]]) -> dict[str, str]:
+def _collect_skill_bundle_files(
+    skill_path: Path,
+    warnings: list[dict[str, str]],
+    *,
+    confine_to: Optional[Path] = None,
+) -> dict[str, str]:
     if skill_path.is_symlink():
         warnings.append({"path": str(skill_path), "message": "skipped symlinked skill file"})
         return {}
@@ -1037,6 +1042,13 @@ def _collect_skill_bundle_files(skill_path: Path, warnings: list[dict[str, str]]
         if candidate.is_symlink() or not candidate.is_file():
             if candidate.is_symlink():
                 warnings.append({"path": str(candidate), "message": "skipped symlinked skill bundle file"})
+            continue
+        if confine_to is not None and _resolve_confined(candidate, confine_to) is None:
+            # A directory somewhere between confine_to and candidate is a
+            # symlink pointing outside the allowed import root -- rglob
+            # follows directory symlinks, so a non-symlinked leaf file can
+            # still resolve outside the root it appears to live under.
+            warnings.append({"path": str(candidate), "message": "skipped bundle file outside the allowed import root"})
             continue
         rel = _safe_relpath(candidate.relative_to(root).as_posix())
         if not rel:
@@ -1110,22 +1122,100 @@ def _collect_hermes_memory_md(path: Path, source_name: str) -> tuple[list[dict[s
     return items, warnings
 
 
+DEFAULT_HERMES_IMPORT_ROOT = "~/.hermes"
+
+
+def _hermes_allowed_roots(
+    extra_roots: Optional[Iterable[str | os.PathLike[str]]] = None,
+) -> list[Path]:
+    """Directories the Hermes import may read from.
+
+    Always includes the default ``~/.hermes`` root -- that is the only
+    supported migration source. ``extra_roots`` lets callers (tests) inject
+    additional roots explicitly. When ``extra_roots`` is not supplied, an
+    operator can opt in to additional roots via the ``hermes_import_extra_roots``
+    setting (a list of path strings); it defaults to empty, so the production
+    default is exactly ``~/.hermes`` unless an operator explicitly widens it.
+    """
+    roots: list[Path] = [Path(DEFAULT_HERMES_IMPORT_ROOT).expanduser().resolve()]
+
+    candidates: list[Any] = list(extra_roots) if extra_roots is not None else []
+    if extra_roots is None:
+        try:
+            from src.settings import get_setting
+            configured = get_setting("hermes_import_extra_roots", [])
+            if isinstance(configured, list):
+                candidates.extend(configured)
+        except Exception:
+            pass
+
+    for candidate in candidates:
+        try:
+            roots.append(Path(str(candidate)).expanduser().resolve())
+        except OSError:
+            continue
+    return roots
+
+
+def _root_containing(resolved: Path, roots: Iterable[Path]) -> Path | None:
+    for root in roots:
+        if resolved == root or root in resolved.parents:
+            return root
+    return None
+
+
+def _resolve_confined(candidate: Path, root: Path) -> Path | None:
+    """Resolve *candidate* and return it only if it stays within *root*.
+
+    Resolution-based (not string-prefix) so ``root/../../etc/passwd`` and
+    symlink escapes are caught after normalization, not by naive prefix
+    matching.
+    """
+    try:
+        resolved = candidate.resolve()
+    except OSError:
+        return None
+    if resolved == root or root in resolved.parents:
+        return resolved
+    return None
+
+
+def _confined_file(candidate: Path, root: Path) -> Path | None:
+    """Return *candidate* if it is a real (non-symlink) file confined to *root*."""
+    if candidate.is_symlink() or not candidate.is_file():
+        return None
+    return _resolve_confined(candidate, root)
+
+
 def preview_hermes_import(
     base_path: str | os.PathLike[str] = "~/.hermes",
     *,
     owner: Optional[str] = None,
     source_name: str = "hermes",
+    allowed_roots: Optional[Iterable[str | os.PathLike[str]]] = None,
 ) -> dict[str, Any]:
     base = Path(os.path.expanduser(str(base_path or "~/.hermes")))
     warnings: list[dict[str, str]] = []
     items: list[dict[str, Any]] = []
 
+    def _rejected(message: str) -> dict[str, Any]:
+        warnings.append({"path": str(base), "message": message})
+        return {"base_path": str(base), "items": [], "proposals": [], "warnings": warnings, "summary": {"item_count": 0, "counts_by_kind": {}, "warning_count": len(warnings)}}
+
     if base.is_symlink():
-        warnings.append({"path": str(base), "message": "base path is a symlink; skipped"})
-        return {"base_path": str(base), "items": [], "proposals": [], "warnings": warnings, "summary": {"item_count": 0, "counts_by_kind": {}, "warning_count": len(warnings)}}
+        return _rejected("base path is a symlink; skipped")
+
+    roots = _hermes_allowed_roots(allowed_roots)
+    try:
+        resolved_base = base.resolve()
+    except OSError:
+        return _rejected("base path could not be resolved")
+
+    if _root_containing(resolved_base, roots) is None:
+        return _rejected("base path is outside the allowed Hermes import root")
+
     if not base.exists():
-        warnings.append({"path": str(base), "message": "base path does not exist"})
-        return {"base_path": str(base), "items": [], "proposals": [], "warnings": warnings, "summary": {"item_count": 0, "counts_by_kind": {}, "warning_count": len(warnings)}}
+        return _rejected("base path does not exist")
 
     try:
         from scripts.agent_migration_manifest import collect_memory_json, collect_skill_dir
@@ -1149,7 +1239,7 @@ def preview_hermes_import(
             default_memory / "memories.json",
             default_memory / "memory.json",
         ):
-            if candidate.exists() and candidate.is_file() and not candidate.is_symlink():
+            if _confined_file(candidate, resolved_base) is not None:
                 memory_json_paths.append(candidate)
         for candidate in (
             base / "MEMORY.md",
@@ -1157,10 +1247,13 @@ def preview_hermes_import(
             default_memory / "MEMORY.md",
             default_memory / "USER.md",
         ):
-            if candidate.exists() and candidate.is_file():
+            if candidate.exists() and candidate.is_file() and _resolve_confined(candidate, resolved_base) is not None:
                 memory_md_paths.append(candidate)
-        if (base / "skills").exists():
-            skill_roots.append(base / "skills")
+        skills_dir = base / "skills"
+        if skills_dir.exists() and not skills_dir.is_symlink() and _resolve_confined(skills_dir, resolved_base) is not None:
+            skill_roots.append(skills_dir)
+        elif skills_dir.exists():
+            warnings.append({"path": str(skills_dir), "message": "skipped skills directory outside the allowed import root"})
         elif any(base.rglob("SKILL.md")):
             skill_roots.append(base)
 
@@ -1177,19 +1270,28 @@ def preview_hermes_import(
         items.extend(collected)
         warnings.extend(got_warnings)
 
-    for root in skill_roots:
+    for root_dir in skill_roots:
         if collect_skill_dir is None:
-            warnings.append({"path": str(root), "message": "skill collector unavailable"})
+            warnings.append({"path": str(root_dir), "message": "skill collector unavailable"})
             continue
-        collected, got_warnings = collect_skill_dir(root, source_name)
+        collected, got_warnings = collect_skill_dir(root_dir, source_name)
+        confined_items: list[dict[str, Any]] = []
         for item in collected:
-            source_path = Path((item.get("metadata") or {}).get("source_path") or "")
+            source_path_raw = (item.get("metadata") or {}).get("source_path") or ""
+            source_path = Path(source_path_raw) if source_path_raw else None
+            if source_path is not None and _resolve_confined(source_path, resolved_base) is None:
+                # rglob follows directory symlinks, so a leaf SKILL.md that
+                # is not itself a symlink can still live under a symlinked
+                # directory that escapes the allowed import root.
+                warnings.append({"path": source_path_raw, "message": "skipped skill file outside the allowed import root"})
+                continue
             bundle_warnings: list[dict[str, str]] = []
-            files = _collect_skill_bundle_files(source_path, bundle_warnings) if source_path else {}
+            files = _collect_skill_bundle_files(source_path, bundle_warnings, confine_to=resolved_base) if source_path else {}
             if files:
                 item["files"] = files
             warnings.extend(bundle_warnings)
-        items.extend(collected)
+            confined_items.append(item)
+        items.extend(confined_items)
         warnings.extend(_warning_dict(w) for w in got_warnings)
 
     proposals = [
@@ -1220,8 +1322,9 @@ def stage_hermes_import(
     owner: Optional[str] = None,
     source_name: str = "hermes",
     store: Optional[LearningProposalStore] = None,
+    allowed_roots: Optional[Iterable[str | os.PathLike[str]]] = None,
 ) -> dict[str, Any]:
-    preview = preview_hermes_import(base_path, owner=owner, source_name=source_name)
+    preview = preview_hermes_import(base_path, owner=owner, source_name=source_name, allowed_roots=allowed_roots)
     store = store or LearningProposalStore()
     added = store.add_many(preview.get("proposals") or [])
     preview["staged"] = added

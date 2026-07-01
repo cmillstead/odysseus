@@ -248,7 +248,7 @@ Use for focused git checks.
     memories.mkdir()
     (memories / "USER.md").write_text("User prefers staged imports.", encoding="utf-8")
 
-    preview = preview_hermes_import(str(hermes), owner="alice")
+    preview = preview_hermes_import(str(hermes), owner="alice", allowed_roots=[hermes])
 
     assert preview["summary"]["counts_by_kind"] == {"memory": 1, "skill": 1}
     memory = [p for p in preview["proposals"] if p["kind"] == "memory"][0]
@@ -263,6 +263,98 @@ Use for focused git checks.
     installed = [s for s in skills_manager.load(owner="alice") if s["name"] == "git-helper"][0]
     assert installed["procedure"] == ["Inspect the worktree.", "Run focused tests."]
     assert skills_manager.read_skill_reference("git-helper", "references/notes.md", owner="alice") == "Reference notes."
+
+
+def test_preview_hermes_import_rejects_file_outside_allowed_root(tmp_path):
+    allowed_root = tmp_path / "hermes"
+    allowed_root.mkdir()
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    secret_text = "TOP_SECRET_DB_PASSWORD=hunter2-do-not-leak"
+    secret_file = outside_dir / "secret.json"
+    secret_file.write_text(json.dumps({"memories": [secret_text]}), encoding="utf-8")
+
+    result = preview_hermes_import(str(secret_file), owner="alice", allowed_roots=[allowed_root])
+
+    assert result["items"] == []
+    assert result["proposals"] == []
+    assert result["summary"]["item_count"] == 0
+    assert any("outside the allowed" in w["message"] for w in result["warnings"])
+    assert secret_text not in json.dumps(result)
+
+
+def test_preview_hermes_import_rejects_path_traversal_outside_allowed_root(tmp_path):
+    allowed_root = tmp_path / "hermes"
+    allowed_root.mkdir()
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    secret_text = "Leaked personal note that must never be returned."
+    (outside_dir / "secret.md").write_text(secret_text, encoding="utf-8")
+
+    traversal_path = str(allowed_root / ".." / "outside" / "secret.md")
+    result = preview_hermes_import(traversal_path, owner="alice", allowed_roots=[allowed_root])
+
+    assert result["items"] == []
+    assert result["proposals"] == []
+    assert any("outside the allowed" in w["message"] for w in result["warnings"])
+    assert secret_text not in json.dumps(result)
+
+
+def test_preview_hermes_import_skips_symlink_inside_root_pointing_outside(tmp_path):
+    allowed_root = tmp_path / "hermes"
+    memories = allowed_root / "memories"
+    memories.mkdir(parents=True)
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    secret_text = "SECRET_API_TOKEN=abc123-must-not-leak"
+    secret_file = outside_dir / "real-secret.md"
+    secret_file.write_text(secret_text, encoding="utf-8")
+    (memories / "USER.md").symlink_to(secret_file)
+
+    result = preview_hermes_import(str(allowed_root), owner="alice", allowed_roots=[allowed_root])
+
+    assert result["items"] == []
+    assert result["proposals"] == []
+    assert secret_text not in json.dumps(result)
+
+
+def test_preview_hermes_import_still_works_under_injected_allowed_root(tmp_path):
+    allowed_root = tmp_path / "hermes"
+    memories = allowed_root / "memories"
+    memories.mkdir(parents=True)
+    (memories / "USER.md").write_text("User prefers a confined hermes root.", encoding="utf-8")
+
+    result = preview_hermes_import(str(allowed_root), owner="alice", allowed_roots=[allowed_root])
+
+    assert result["summary"]["item_count"] == 1
+    memory = result["proposals"][0]
+    assert memory["payload"]["text"] == "User prefers a confined hermes root."
+
+
+def test_hermes_routes_reject_out_of_root_base_path_without_leaking(tmp_path):
+    store = LearningProposalStore(str(tmp_path / "learning.json"))
+    memory_manager = MemoryManager(str(tmp_path))
+    skills_manager = SkillsManager(str(tmp_path))
+    secret_text = "CREDENTIAL_THAT_MUST_NOT_LEAK"
+    secret_file = tmp_path / "secret.json"
+    secret_file.write_text(json.dumps({"memories": [secret_text]}), encoding="utf-8")
+
+    # No auth middleware is mounted on this bare app, so get_current_user
+    # resolves the real (unauthenticated) owner of None -- this test exercises
+    # the production-default Hermes root confinement, not owner scoping.
+    app = FastAPI()
+    app.include_router(setup_learning_routes(memory_manager, None, skills_manager, store=store))
+    client = TestClient(app)
+
+    preview = client.post("/api/learning/hermes/preview", json={"base_path": str(secret_file)})
+    assert preview.status_code == 200
+    assert preview.json()["items"] == []
+    assert secret_text not in preview.text
+
+    staged = client.post("/api/learning/hermes/stage", json={"base_path": str(secret_file)})
+    assert staged.status_code == 200
+    assert staged.json()["staged_count"] == 0
+    assert secret_text not in staged.text
 
 
 def test_skill_curator_stages_low_confidence_learned_skill(tmp_path):
@@ -372,7 +464,7 @@ category: dev
     monkeypatch.setattr(learning_routes, "get_current_user", lambda _request: "alice")
 
     app = FastAPI()
-    app.include_router(setup_learning_routes(memory_manager, None, skills_manager))
+    app.include_router(setup_learning_routes(memory_manager, None, skills_manager, hermes_allowed_roots=[hermes]))
     client = TestClient(app)
 
     bulk = client.post("/api/learning/pending/approve-all")

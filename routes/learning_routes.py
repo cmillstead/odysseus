@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from typing import Iterable, Optional
+
 from fastapi import APIRouter, HTTPException, Request
 
 from services.memory.learning_review import (
@@ -16,9 +19,28 @@ from services.runs import get_run_registry
 from src.auth_helpers import get_current_user
 
 
-def setup_learning_routes(memory_manager, memory_vector, skills_manager) -> APIRouter:
+def setup_learning_routes(
+    memory_manager,
+    memory_vector,
+    skills_manager,
+    *,
+    hermes_allowed_roots: Optional[Iterable[str | os.PathLike[str]]] = None,
+    store: Optional[LearningProposalStore] = None,
+) -> APIRouter:
+    """Build the learning-review router.
+
+    ``hermes_allowed_roots`` overrides the default ``~/.hermes`` confinement
+    root the Hermes import endpoints read from. Production callers should
+    leave it unset; tests can point it at a temp directory instead of
+    touching the real home directory.
+
+    ``store`` overrides the default proposal store (backed by
+    ``LEARNING_PROPOSALS_FILE``). Production callers should leave it unset;
+    tests can pass a store backed by a temp file instead of touching real
+    application data.
+    """
     router = APIRouter(prefix="/api/learning", tags=["learning"])
-    store = LearningProposalStore()
+    store = store or LearningProposalStore()
 
     def _owner(request: Request):
         return get_current_user(request)
@@ -209,7 +231,7 @@ def setup_learning_routes(memory_manager, memory_vector, skills_manager) -> APIR
         data = await _json_body(request)
         base_path = data.get("base_path") or "~/.hermes"
         source_name = data.get("source_name") or "hermes"
-        result = preview_hermes_import(base_path, owner=owner, source_name=source_name)
+        result = preview_hermes_import(base_path, owner=owner, source_name=source_name, allowed_roots=hermes_allowed_roots)
         try:
             registry = get_run_registry()
             run = registry.create_run(
@@ -236,7 +258,7 @@ def setup_learning_routes(memory_manager, memory_vector, skills_manager) -> APIR
         data = await _json_body(request)
         base_path = data.get("base_path") or "~/.hermes"
         source_name = data.get("source_name") or "hermes"
-        result = stage_hermes_import(base_path, owner=owner, source_name=source_name, store=store)
+        result = stage_hermes_import(base_path, owner=owner, source_name=source_name, store=store, allowed_roots=hermes_allowed_roots)
         try:
             registry = get_run_registry()
             proposals = result.get("proposals") or []
