@@ -46,6 +46,7 @@ behavior change and no broken import paths along the way.
 - [x] Slice 2 — `routes/email/` domain package — merged 2026-07-01 (fork PR #2)
 - [x] Slice 2 — `routes/document/` domain package — merged 2026-07-01 (fork PR #3, merge `b049650`)
 - [x] Slice 2 — `routes/auth/` domain package — merged 2026-07-01 (fork PR #4, merge `dcde7b1`) — **Phase 1 complete**
+- [x] Slice 2 — `routes/calendar/` + `routes/contacts/` domain packages (two separate) — merged 2026-07-01 (fork PR #5, merge `5907c96`) — **first Phase 2 domain**
 
 ### Active (In Progress)
 
@@ -53,9 +54,8 @@ behavior change and no broken import paths along the way.
 
 ### Planned (Next) — grounded 2026-07-01, spec §4 boundaries
 
-- [ ] Calendar/Contacts (calendar_routes + contacts_routes) — MEDIUM  ← **next (02-01)**
-- [ ] Model/LLM (model_routes + assistant_routes + copilot_routes) — MEDIUM
-- [ ] Cookbook (cookbook_routes + cookbook_helpers + cookbook_output) — MEDIUM
+- [ ] Model/LLM (model_routes + assistant_routes + copilot_routes) — MEDIUM  ← **next (02-02)**
+- [ ] Cookbook (cookbook_routes + cookbook_helpers + cookbook_output) — MEDIUM (02-03)
 - [ ] Chat/Agent (chat_routes + chat_helpers; shell/codex/skills shape TBD) — HIGH
 
 ### Out of Scope (for v0.1)
@@ -105,7 +105,7 @@ behavior change and no broken import paths along the way.
 |--------|--------|---------|--------|
 | Test-suite parity per slice | 0 new failures vs baseline | baseline: 3 pre-existing failures | On track |
 | `python -m compileall` | clean on every PR | clean | On track |
-| Multi-file route domains packaged (v0.1) | 9 / 9 | 5 / 9 (email, gallery, research, document, auth) | In progress |
+| Multi-file route domains packaged (v0.1) | 9 / 9 | 6 / 9 (email, gallery, research, document, auth, calendar+contacts) | In progress |
 | Slice 1 (tool_implementations → src/tools/) | complete | complete | Achieved |
 
 ## Tech Stack / Tools
