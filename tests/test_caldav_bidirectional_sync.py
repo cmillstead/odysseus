@@ -41,7 +41,7 @@ def test_caldav_pull_prune_skips_unsynced_or_pending_local_rows():
 
 
 def test_http_calendar_writes_mark_pending_and_push_after_commit():
-    source = Path("routes/calendar_routes.py").read_text()
+    source = Path("routes/calendar/routes.py").read_text()
 
     assert 'caldav_sync_pending="create" if cal.source == "caldav" else None' in source
     assert 'ev.caldav_sync_pending = "update"' in source

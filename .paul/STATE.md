@@ -11,21 +11,21 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 ## Current Position
 
 Milestone: v0.1 Backend Module Boundaries
-Phase: 1 of 3 — Low-risk domains (Documents, Auth)
-Plan: 01-01 (Documents) SHIPPED (PR #3 merged to dev, `b049650`); 01-02 (Auth) next
-Status: 01-01 merged → PLAN/APPLY 01-02 (Auth) next
-Last activity: 2026-07-01 — 01-01 shipped: Codex review clean, full suite 4257 passed / 0 new failures, PR #3 merged to dev
+Phase: 1 of 3 — Low-risk domains (Documents, Auth) — **COMPLETE**; Phase 2 next
+Plan: 01-01 (Documents, PR #3) + 01-02 (Auth, PR #4) both SHIPPED. Next: 02-01 (Calendar/Contacts).
+Status: Phase 1 done (both low-risk domains merged) → GROUND/PLAN 02-01 (Calendar/Contacts, MEDIUM)
+Last activity: 2026-07-01 — 01-02 Auth shipped: Codex clean, full suite 4265 passed / 0 new failures, PR #4 merged (`dcde7b1`)
 
 Progress:
-- Milestone: [████░░░░░░] 44% by domain (4 of 9 merged: email, gallery, research, document)
-- Phase 1: [█████░░░░░] 50% (1 of 2 plans complete)
+- Milestone: [█████░░░░░] 56% by domain (5 of 9 merged: email, gallery, research, document, auth)
+- Phase 1: [██████████] 100% (2 of 2 plans complete)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ✓        ✓         ✓   [01-01 merged (PR #3) — next: 01-02 Auth]
+  ✓        ✓        ✓         ✓   [01-02 merged (PR #4) — Phase 1 COMPLETE; next: 02-01 Calendar/Contacts]
 ```
 
 ## Accumulated Context
@@ -38,6 +38,7 @@ PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
 | v0.1 = finish Slice 1 + all Slice 2 | Defers agent_loop / src-layering / database to later milestones |
 | `sys.modules` alias shim pattern | Preserves import paths + `mock.patch` targets across every move |
 | One domain per PR | Atomic, reviewable, behavior-preserving slices |
+| 2026-07-01: 02-01 Calendar/Contacts = TWO SEPARATE packages | Files share zero code (no mutual import, no shared helper, distinct CalDAV/CardDAV stacks) → `routes/calendar/` + `routes/contacts/`, not co-located |
 
 ### Deferred Issues
 
@@ -56,10 +57,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-01 17:58 UTC
-Stopped at: 01-01 Documents SHIPPED — Codex review clean, full suite 4257 passed / 0 new failures, PR #3 merged to dev (`b049650`), local dev synced, PAUL state reconciled.
-Next action: Run /paul:apply for 01-02 (Auth → routes/auth/) off updated dev. Auth pre-audited: no source-path repoints (GROUND.md).
-Resume file: .paul/phases/01-low-risk-domains/01-02-PLAN.md
+Last session: 2026-07-01 18:36 UTC
+Stopped at: **Phase 1 COMPLETE** — 01-01 Documents (PR #3, `b049650`) and 01-02 Auth (PR #4, `dcde7b1`) both shipped; local dev synced; PAUL reconciled to 5/9 domains. Auth left a deferred follow-up (test_auth_regressions subset fragility — see Deferred Issues).
+Next action: Begin Phase 2 (medium-risk). GROUND 02-01 (Calendar/Contacts) — re-derive live line counts + importer/patch-target + source-path-introspection audit; settle the OPEN CALL: co-locate calendar+contacts in one routes/calendar/ package vs two separate packages.
+Resume file: .paul/phases/ (Phase 2 dir + 02-01-PLAN.md to be created after grounding)
 
 ---
 *STATE.md — Updated after every significant action*
