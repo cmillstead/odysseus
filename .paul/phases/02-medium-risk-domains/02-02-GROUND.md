@@ -1,7 +1,7 @@
 # GROUND — Phase 2 / 02-02: Model/LLM (model + assistant + copilot)
 
 _Re-derived from the live tree 2026-07-01 per `.paul/CONVENTIONS.md` (spec numbers not trusted)._
-_Shape RESOLVED 2026-07-01 (user): **(A) one co-located `routes/model/` package** — `routes.py` (model) + `assistant.py` + `copilot.py`, three shims at old flat paths. copilot→model is intra-package._
+_Shape RESOLVED 2026-07-01 (user): **(A) one co-located `routes/model/` package** — `routes.py` (model) + `assistant.py` + `copilot.py` as siblings, three shims at old flat paths. copilot.py stays byte-identical (import NOT repointed — see decision section). Plan PASSED Codex review round 3 (2026-07-02)._
 
 ## Files (re-derived line counts)
 - `routes/model_routes.py` — **2,442 ln**
@@ -25,7 +25,7 @@ No shared helper module; distinct stacks (model = endpoint/DB management + LLM p
 - `routes/cookbook_routes.py:1229, 1290` → `_probe_endpoint` (fn-level)
 - `routes/copilot_routes.py:95` → `_invalidate_models_cache` (fn-level, in-domain)
 - `src/service_health.py:359` → `from routes.model_routes import _probe_endpoint as probe` (fn-level)
-- Consumed private symbols verified module-level in `model_routes.py`: `_invalidate_models_cache` (:1108), `_probe_endpoint`, `_visible_models`.
+- Consumed private symbols — VERIFIED SCOPE (corrected 2026-07-02 after Codex plan review): `_probe_endpoint` (:768) and `_visible_models` (:1069) are **module-level** (importable). **`_invalidate_models_cache` (:1108) is NESTED inside `setup_model_routes`** (closes over `_models_cache`) — it is NOT importable. The existing `from routes.model_routes import _invalidate_models_cache` calls in copilot (:95) and chatgpt_subscription (:101) run inside `try/except: pass` and already fail-and-swallow today (cache invalidation from those sites is a pre-existing silent no-op). ⇒ do NOT re-export `_invalidate_models_cache`; do NOT repoint copilot's import (keep byte-identical).
 - Docstring/comment-only mentions (NOT imports): `src/model_context.py:28`, `src/tls_overrides.py:31`, `src/copilot.py:17,139`, `core/auth.py:64` (`_SYNTHETIC_OWNERS` note re assistant).
 
 `assistant_routes` / `copilot_routes` have **no** external importers beyond `app.py` (and copilot's own model edge).
@@ -54,17 +54,19 @@ The 02-01 carry-forward hits here, and worse — it lives in a shared test helpe
 
 Under the alias shim, `clear_module("routes.model_routes")` pops only the 4-line shim alias (+ its `routes` parent attr). The canonical `routes.model.routes` stays cached (bound to the fake resolver). The subsequent `import routes.model_routes` re-runs the shim (`from routes.model import routes as _real`), which re-fetches the still-cached canonical module — **the eviction is defeated; model stays bound to the fake `endpoint_resolver`.** (Same root cause as 02-01: `from pkg import mod` won't reload if the package object still holds the attr.)
 
-**Fix (plan into 02-02):**
+**Fix (plan into 02-02) — EXPANDED 2026-07-02 after Codex plan review (more sites than first grounded):**
 1. `clear_fake_endpoint_resolver_modules` (and `clear_module` usage for the moved module) must ALSO `clear_module("routes.model.routes")` — clearing the canonical `sys.modules` entry AND its parent attr on `routes.model` forces the shim's `from routes.model import routes` to truly re-execute under the real resolver.
-2. `test_endpoint_probing.py`: add `"routes.model.routes"` to `preserve_import_state(...)` so the fresh reimport doesn't leak the canonical module to later tests.
-3. `tests/test_helpers_import_state.py` unit-tests the helper with **injected fakes** (`types.ModuleType("routes.model_routes")`, e.g. :305-306, :326-329) — it does NOT import the real module, so adding a `clear_module("routes.model.routes")` (no-op when absent) won't break it; optionally add a covering assertion that the canonical name is cleared too.
+2. `test_endpoint_probing.py:30`: add `"routes.model.routes"` to `preserve_import_state(...)`.
+3. **`test_model_routes.py:17`**: also uses `preserve_import_state("...","routes.model_routes")` + `clear_fake_endpoint_resolver_modules()` (I mis-read it as import-once in the first grounding — line 17 is a `with preserve_import_state` block) → add `"routes.model.routes"` to its preserve list.
+4. **`test_model_defaults.py:9`**: `preserve_import_state("core.database","src.database","routes.model_routes","routes.prefs_routes")` + `import routes.model_routes` → add `"routes.model.routes"`.
+5. **`test_review_regressions.py:73-101` (`_install_model_route_import_stubs`)**: installs a model-only `core.database` stub then `monkeypatch.delitem(sys.modules, "routes.model_routes")` (:94) + reimport → add `monkeypatch.delitem(sys.modules, "routes.model.routes", raising=False)` alongside :94.
+6. `tests/test_helpers_import_state.py` unit-tests the helper with **injected fakes** (`types.ModuleType("routes.model_routes")`, e.g. :305-306, :326-329) — does NOT import the real module, so the added canonical clear is a safe no-op; add a covering assertion.
 
-`test_model_routes.py` itself does NOT delitem+reimport (it installs the `core.database` stub only `if "core.database" not in sys.modules` and imports once) — so it's safe *except* through the shared helper above.
-
-## `__init__.py` public API to re-export (if a package holds the routes module)
-- model: `setup_model_routes`, `_invalidate_models_cache`, `_probe_endpoint`, `_visible_models` (the cross-module-consumed set; the ~20 privates that `test_model_routes.py`/`test_endpoint_probing.py` import resolve via the shim on the old path and need no `__init__` entry — but union any that a non-test consumer imports).
-- assistant: `setup_assistant_routes`.
-- copilot: `setup_copilot_routes`.
+## `__init__.py` — MUST be MINIMAL (corrected 2026-07-02 after Codex plan review)
+Do NOT build an eager re-export union. Two reasons:
+1. `_invalidate_models_cache` is nested (see above) — an eager `from .routes import _invalidate_models_cache` would `ImportError` and break every shim import.
+2. An eager `from .assistant import setup_assistant_routes` would pull `CrewMember`/`ScheduledTask` (`assistant_routes.py:17`) at model-shim import time. Several model tests install a **model-only** `core.database` stub WITHOUT those names (`test_model_routes.py:24-30` lacks `CrewMember`; `test_review_regressions.py:76-82` lacks both) → `AttributeError` when the shim triggers `routes.model.__init__` → `.assistant`.
+⇒ `routes/model/__init__.py` = docstring only (no eager imports). Nobody imports `from routes.model import X` — all consumers use the old flat paths via the shims, which alias directly to the submodules (`from routes.model import routes as _real`), and importing a submodule only needs the package `__init__` to exist, not to re-export anything.
 
 ## Anti-pattern flags (P5/P6/P7/P10/P15/P21)
 - **P5/P7 (API/helper sig):** setup sigs + `_invalidate_models_cache() -> None` (no args; callers call bare) verified — no drift.
@@ -74,7 +76,7 @@ Under the alias shim, `clear_module("routes.model_routes")` pops only the 4-line
 - **P1/P10:** N/A — pure move, no data-model/schema references.
 
 ## Shape decision — RESOLVED: (A) co-located `routes/model/`
-**Decided 2026-07-01 (user): shape (A).** `routes/model/routes.py` (← model_routes.py), `routes/model/assistant.py` (← assistant_routes.py), `routes/model/copilot.py` (← copilot_routes.py); three shims at the old flat paths; copilot→model is intra-package (`from routes.model.routes import _invalidate_models_cache`). `app.py` repoints: `:658` → `routes.model.routes`, `:662` → `routes.model.copilot`, `:705` → `routes.model.assistant`. The 2 source-path tests repoint to `routes/model/routes.py`.
+**Decided 2026-07-01 (user): shape (A).** `routes/model/routes.py` (← model_routes.py), `routes/model/assistant.py` (← assistant_routes.py), `routes/model/copilot.py` (← copilot_routes.py); three shims at the old flat paths. **copilot.py stays byte-identical — its `from routes.model_routes import _invalidate_models_cache` is NOT repointed** (corrected 2026-07-02: that symbol is nested/non-importable and the import already fails-and-swallows; repointing would falsely imply it works). `app.py` repoints: `:658` → `routes.model.routes`, `:662` → `routes.model.copilot`, `:705` → `routes.model.assistant`. The 2 source-path tests repoint to `routes/model/routes.py`. `routes/model/__init__.py` is docstring-only (no re-exports).
 
 _Rationale kept for the record —_ applying the 02-01 rule literally (no shared helper module → separate) pointed to three separate packages. But two facts complicated it vs the calendar/contacts case:
 - There IS an intra-domain import edge (copilot→model) — though the shim handles it either way, and it's one fn-level private import.
