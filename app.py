@@ -709,7 +709,7 @@ from routes.run_routes import setup_run_routes
 app.include_router(setup_run_routes(task_scheduler=task_scheduler, research_handler=research_handler))
 
 # Calendar (CalDAV)
-from routes.calendar_routes import setup_calendar_routes
+from routes.calendar.routes import setup_calendar_routes
 calendar_router = setup_calendar_routes()
 app.include_router(calendar_router)
 
@@ -798,7 +798,7 @@ from routes.vault_routes import setup_vault_routes
 app.include_router(setup_vault_routes())
 
 # Contacts (CardDAV)
-from routes.contacts_routes import setup_contacts_routes
+from routes.contacts.routes import setup_contacts_routes
 app.include_router(setup_contacts_routes())
 
 from companion import setup_companion_routes
