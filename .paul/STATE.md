@@ -12,9 +12,9 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 
 Milestone: v0.1 Backend Module Boundaries
 Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 Calendar/Contacts COMPLETE)
-Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. Next: 02-02 (Model/LLM).
-Status: 02-01 merged → GROUND/PLAN 02-02 (Model/LLM: model + assistant + copilot, MEDIUM)
-Last activity: 2026-07-01 — 02-01 Calendar/Contacts shipped: Codex clean, full suite 4273 passed / 0 new failures, PR #5 merged (`5907c96`)
+Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) GROUNDED + PLANNED — ready to APPLY.
+Status: 02-02 pre-planning gate done (GROUND + PLAN); shape RESOLVED = (A) one co-located `routes/model/` package → APPLY next
+Last activity: 2026-07-02 — 02-02 grounded (shim-reload gotcha lands in shared helper `tests/helpers/import_state.py`; model is a hub) + planned; on branch `refactor/routes-model-domain`
 
 Progress:
 - Milestone: [███████░░░] 67% by domain (6 of 9 merged: email, gallery, research, document, auth, calendar+contacts)
@@ -26,7 +26,7 @@ Progress:
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ✓        ✓         ✓   [02-01 merged (PR #5) — Phase 2 domain 1/3; next: 02-02 Model/LLM]
+  ✓        ·         ·         ·   [02-02 PLANNED (shape A) — APPLY next. 02-01 shipped (PR #5).]
 ```
 
 ## Accumulated Context
@@ -61,8 +61,8 @@ None.
 
 Last session: 2026-07-01 — 02-01 Calendar/Contacts shipped.
 Stopped at: **Phase 2 domain 1/3 COMPLETE** — 02-01 Calendar/Contacts (PR #5, merge `5907c96`) shipped; two separate packages behind shims; full suite 4273 passed / 0 new failures; Codex clean. A shim-induced regression in `test_calendar_owner_scope.py` was found and fixed (see Deferred Issues → shim-reload gotcha for the carry-forward). SUMMARY at `.paul/phases/02-medium-risk-domains/02-01-SUMMARY.md`.
-Next action: GROUND 02-02 (Model/LLM: model_routes + assistant_routes + copilot_routes) — re-derive live line counts + importer/patch-target + source-path-introspection audit; settle the co-locate-vs-separate call (apply the zero-shared-code test as in 02-01). Then PLAN + APPLY.
-Resume file: .paul/phases/02-medium-risk-domains/ (create 02-02 GROUND/PLAN after grounding)
+Next action: APPLY 02-02 — dispatch the implementer for `.paul/phases/02-medium-risk-domains/02-02-PLAN.md` (Tasks 1-4), then orchestrator runs the full-suite Qualify (Task 5) → Codex → PR to dev. On branch `refactor/routes-model-domain`. Headline risk: the shared-helper shim fix (Task 3).
+Resume file: .paul/phases/02-medium-risk-domains/02-02-PLAN.md (+ 02-02-GROUND.md)
 
 ---
 *STATE.md — Updated after every significant action*
