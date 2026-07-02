@@ -61,8 +61,14 @@ None.
 
 Last session: 2026-07-01 — 02-01 Calendar/Contacts shipped.
 Stopped at: **Phase 2 domain 1/3 COMPLETE** — 02-01 Calendar/Contacts (PR #5, merge `5907c96`) shipped; two separate packages behind shims; full suite 4273 passed / 0 new failures; Codex clean. A shim-induced regression in `test_calendar_owner_scope.py` was found and fixed (see Deferred Issues → shim-reload gotcha for the carry-forward). SUMMARY at `.paul/phases/02-medium-risk-domains/02-01-SUMMARY.md`.
-Next action: APPLY 02-02 — dispatch the implementer for `.paul/phases/02-medium-risk-domains/02-02-PLAN.md` (Tasks 1-4), then orchestrator runs the full-suite Qualify (Task 5) → Codex → PR to dev. On branch `refactor/routes-model-domain`. Headline risk: the shared-helper shim fix (Task 3).
-Resume file: .paul/phases/02-medium-risk-domains/02-02-PLAN.md (+ 02-02-GROUND.md)
+Next action: APPLY 02-02 — plan is Codex-reviewed (**3 rounds → PASS**, commit `22f87d5`). Dispatch the implementer
+for `.paul/phases/02-medium-risk-domains/02-02-PLAN.md` (Tasks 1-4), then orchestrator runs the full-suite Qualify
+(Task 5) → Codex diff review → PR to dev. On branch `refactor/routes-model-domain`. Headline risk: the 5-site
+shim-reload fix (Task 3). Full handoff: `docs/handoff/2026-07-02-paul-model-domain.md`.
+OUTSTANDING (user's strong ask): enforce "always second-opinion the PLAN before APPLY" as a HARD gate in the PAUL
+`/paul:apply` workflow via `/harness-engineer` (memory can't enforce it). User was choosing APPLY-first vs
+enforcement-first at the clear.
+Resume file: docs/handoff/2026-07-02-paul-model-domain.md → .paul/phases/02-medium-risk-domains/02-02-PLAN.md
 
 ---
 *STATE.md — Updated after every significant action*
