@@ -11,22 +11,22 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 ## Current Position
 
 Milestone: v0.1 Backend Module Boundaries
-Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 Calendar/Contacts COMPLETE)
-Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) GROUNDED + PLANNED — ready to APPLY.
-Status: 02-02 pre-planning gate done (GROUND + PLAN); shape RESOLVED = (A) one co-located `routes/model/` package → APPLY next
-Last activity: 2026-07-02 — 02-02 grounded (shim-reload gotcha lands in shared helper `tests/helpers/import_state.py`; model is a hub) + planned; on branch `refactor/routes-model-domain`
+Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 + 02-02 APPLIED)
+Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) APPLIED + Codex-approved — PR to dev pending.
+Status: 02-02 APPLY complete (4 commits on `refactor/routes-model-domain`); full suite green at baseline parity, Codex diff review APPROVED (0 findings). Next: UNIFY → PR to dev.
+Last activity: 2026-07-04 — 02-02 applied (co-located `routes/model/` package + 3 shims; shim-reload gotcha fixed across shared helper + 4 sites); applied under logged override (gate had no recorded artifact for the pre-recorder 3-round plan review)
 
 Progress:
-- Milestone: [███████░░░] 67% by domain (6 of 9 merged: email, gallery, research, document, auth, calendar+contacts)
+- Milestone: [███████░░░] 67% by domain (6 of 9 merged; 02-02 applied, not yet merged)
 - Phase 1: [██████████] 100% (2 of 2 plans complete)
-- Phase 2: [███░░░░░░░] 33% (1 of 3 plans complete: 02-01)
+- Phase 2: [███████░░░] 67% (2 of 3 applied: 02-01 shipped, 02-02 applied/PR-pending)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ·         ·         ·   [02-02 PLANNED (shape A) — APPLY next. 02-01 shipped (PR #5).]
+  ✓        ✓         ·         ·   [02-02 APPLIED + Codex-approved — UNIFY/PR next. 02-01 shipped (PR #5).]
 ```
 
 ## Accumulated Context
