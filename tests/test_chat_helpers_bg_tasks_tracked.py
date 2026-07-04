@@ -3,18 +3,18 @@
 asyncio only holds a weak reference to a bare create_task() result, so the
 GC can collect the outer task before its body runs and the background work
 (memory/skill extraction, session auto-naming) silently never happens.
-routes/chat_helpers.py owns these schedules via _spawn_bg(), which adds the
+routes/chat/helpers.py owns these schedules via _spawn_bg(), which adds the
 task to _BG_TASKS and discards it via a done-callback. This guard catches a
 regression where a copy-paste re-introduces a bare asyncio.create_task.
 
-This is the routes/chat_helpers.py-scoped sibling of the webhook-emitter
+This is the routes/chat/helpers.py-scoped sibling of the webhook-emitter
 guard added in #4336 (tests/test_webhook_emitters_use_manager.py).
 """
 import ast
 from pathlib import Path
 
 CHAT_HELPERS = (
-    Path(__file__).resolve().parent.parent / "routes" / "chat_helpers.py"
+    Path(__file__).resolve().parent.parent / "routes" / "chat" / "helpers.py"
 )
 
 
@@ -64,8 +64,8 @@ def test_no_untracked_create_task_in_chat_helpers():
     tree = ast.parse(CHAT_HELPERS.read_text(), filename=str(CHAT_HELPERS))
     offenders = _untracked_create_task_calls(tree)
     assert not offenders, (
-        "Background tasks scheduled from routes/chat_helpers.py must go through "
+        "Background tasks scheduled from routes/chat/helpers.py must go through "
         "_spawn_bg(coro) so the task is registered in _BG_TASKS and survives until "
         "it finishes. Found bare asyncio.create_task(...) call(s):\n  "
-        + "\n  ".join(f"chat_helpers.py:{ln}: {snip}" for ln, snip in offenders)
+        + "\n  ".join(f"routes/chat/helpers.py:{ln}: {snip}" for ln, snip in offenders)
     )

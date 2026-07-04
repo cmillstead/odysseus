@@ -613,7 +613,7 @@ from routes.learning_routes import setup_learning_routes
 app.include_router(setup_learning_routes(memory_manager, memory_vector, skills_manager))
 
 # Chat
-from routes.chat_routes import setup_chat_routes
+from routes.chat.routes import setup_chat_routes
 app.include_router(setup_chat_routes(
     session_manager, chat_handler, chat_processor,
     memory_manager, research_handler, upload_handler,

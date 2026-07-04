@@ -12,9 +12,7 @@ Fix: (1) Read from JSON body as fallback.
 import ast
 from pathlib import Path
 
-import pytest
-
-_CHAT_ROUTES = Path(__file__).resolve().parent.parent / "routes" / "chat_routes.py"
+_CHAT_ROUTES = Path(__file__).resolve().parent.parent / "routes" / "chat" / "routes.py"
 
 
 # ── Source-level guards ─────────────────────────────────────────

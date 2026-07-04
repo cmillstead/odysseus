@@ -15,8 +15,8 @@ database) and `ai_interaction.py` cleanup are later milestones.
 ## Current Milestone
 
 **v0.1 Backend Module Boundaries** (v0.1.0) — Slice 2, multi-file domains
-Status: In progress — **2 of 3 phases complete**
-Phases: 2 of 3 complete · Domains: 8 of 9 done (email, gallery, research, document, auth, calendar+contacts, model, cookbook) · **remaining: Chat/Agent**
+Status: Phase 3 applied in branch — **3 of 3 phases complete after branch merge**
+Phases: 3 of 3 applied · Domains: 9 of 9 applied in branch (email, gallery, research, document, auth, calendar+contacts, model, cookbook, chat/agent)
 
 ## Phases
 
@@ -24,7 +24,7 @@ Phases: 2 of 3 complete · Domains: 8 of 9 done (email, gallery, research, docum
 |-------|------|-------|--------|-----------|
 | 1 | Low-risk domains (warm the pattern) | 2 | ✅ Complete | 2026-07-01 |
 | 2 | Medium-risk domains | 3 | ✅ Complete | 2026-07-04 |
-| 3 | Chat/Agent (highest-risk, last) | 1 | 🔵 Not started | - |
+| 3 | Chat/Agent (highest-risk, last) | 1 | ◐ Applied in branch | 2026-07-04 |
 
 ## Phase Details
 
@@ -58,15 +58,14 @@ than splitting shared code; confirm that's the desired shape at plan time.
 chat + shell + codex + skills (6,365 ln), but `shell_routes`/`codex_routes`/`skills_routes`
 are **standalone files with no shared helpers** — only chat_routes + chat_helpers form a
 true shared-code cluster.
-**OPEN CALL (settle at plan time):** either (a) move all five into `routes/chat/` as a themed
-package, or (b) make `routes/chat/` = chat_routes + chat_helpers only and leave shell/codex/
-skills flat (they're singletons). Recommendation leans (b) — don't over-bundle unrelated
-surfaces under "chat".
+**Resolved 2026-07-04:** `routes/chat/` = `chat_routes.py` + `chat_helpers.py` only.
+`shell_routes.py`, `codex_routes.py`, and `skills_routes.py` stay flat because they are
+standalone singleton route surfaces with no shared chat helper layer.
 **Depends on:** Phase 2 (pattern fully warm; biggest/most-coupled domain last).
 **Research:** Unlikely.
 
 **Plans:**
-- [ ] 03-01: `routes/chat/` package + shim (scope decided by the OPEN CALL above)
+- [x] 03-01: `routes/chat/` package + shims — APPLIED in branch (chat routes + helpers only; shell/codex/skills flat)
 
 ## Explicitly Out of Scope for v0.1 (grounded 2026-07-01)
 
@@ -92,4 +91,4 @@ surfaces under "chat".
 | v0.5+ | Slices 7–8 — frontend CSS/JS | Separate timeline (#2617) |
 
 ---
-*Roadmap created: 2026-07-01 · Grounded against codebase + spec §4: 2026-07-01 · Last updated: 2026-07-04 after Phase 2 complete (only Phase 3 / Chat-Agent remains for v0.1)*
+*Roadmap created: 2026-07-01 · Grounded against codebase + spec §4: 2026-07-01 · Last updated: 2026-07-04 after Phase 3 Chat/Agent branch applied*
