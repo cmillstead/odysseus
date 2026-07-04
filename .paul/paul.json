@@ -7,9 +7,9 @@
     "status": "in_progress"
   },
   "phase": {
-    "number": 2,
-    "name": "Medium-risk domains",
-    "status": "in_progress"
+    "number": 3,
+    "name": "Chat/Agent (highest-risk, last)",
+    "status": "not_started"
   },
   "loop": {
     "plan": null,
@@ -17,7 +17,7 @@
   },
   "timestamps": {
     "created_at": "2026-07-01T15:55:00Z",
-    "updated_at": "2026-07-04T17:40:27Z"
+    "updated_at": "2026-07-04T21:05:00Z"
   },
   "satellite": {
     "groom": true
