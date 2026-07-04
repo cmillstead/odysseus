@@ -15,16 +15,16 @@ database) and `ai_interaction.py` cleanup are later milestones.
 ## Current Milestone
 
 **v0.1 Backend Module Boundaries** (v0.1.0) — Slice 2, multi-file domains
-Status: In progress
-Phases: 0 of 3 complete · Domains: 3 of 9 done (email, gallery, research)
+Status: In progress — **2 of 3 phases complete**
+Phases: 2 of 3 complete · Domains: 8 of 9 done (email, gallery, research, document, auth, calendar+contacts, model, cookbook) · **remaining: Chat/Agent**
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 1 | Low-risk domains (warm the pattern) | 2 | Planned (ready to apply) | - |
-| 2 | Medium-risk domains | 3 | Not started | - |
-| 3 | Chat/Agent (highest-risk, last) | 1 | Not started | - |
+| 1 | Low-risk domains (warm the pattern) | 2 | ✅ Complete | 2026-07-01 |
+| 2 | Medium-risk domains | 3 | ✅ Complete | 2026-07-04 |
+| 3 | Chat/Agent (highest-risk, last) | 1 | 🔵 Not started | - |
 
 ## Phase Details
 
@@ -36,8 +36,8 @@ after email, before touching the bigger ones. One domain per plan / per PR.
 **Research:** Unlikely.
 
 **Plans:**
-- [ ] 01-01: `routes/document/` — document_routes.py + document_helpers.py + shim (LOW, 1,954 ln)
-- [ ] 01-02: `routes/auth/` — auth_routes.py + api_token_routes.py + device_flow.py + shim (LOW, 1,171 ln)
+- [x] 01-01: `routes/document/` — document_routes.py + document_helpers.py + shim (LOW, 1,954 ln) — SHIPPED (fork PR #3)
+- [x] 01-02: `routes/auth/` — auth_routes.py + api_token_routes.py + device_flow.py + shim (LOW, 1,171 ln) — SHIPPED (fork PR #4)
 
 ### Phase 2: Medium-risk domains
 
@@ -48,9 +48,9 @@ than splitting shared code; confirm that's the desired shape at plan time.
 **Research:** Unlikely.
 
 **Plans:**
-- [ ] 02-01: `routes/calendar/` — calendar_routes.py + contacts_routes.py + shim (MEDIUM, 2,336 ln) — *themed grouping; confirm calendar+contacts belong together vs two packages*
-- [ ] 02-02: `routes/model/` — model_routes.py + assistant_routes.py + copilot_routes.py + shim (MEDIUM, 2,764 ln) — *themed grouping of standalone files*
-- [ ] 02-03: `routes/cookbook/` — cookbook_routes.py (188 KB) + cookbook_helpers.py + cookbook_output.py + shim (MEDIUM, 4,110 ln)
+- [x] 02-01: `routes/calendar/` + `routes/contacts/` — TWO separate packages + shims (MEDIUM, 2,336 ln) — SHIPPED (fork PR #5); resolved: they share zero code → not co-located
+- [x] 02-02: `routes/model/` — model_routes.py + assistant_routes.py + copilot_routes.py + shim (MEDIUM, 2,764 ln) — SHIPPED (fork PR #7, merge `bd32ccb`); co-located (themed grouping)
+- [x] 02-03: `routes/cookbook/` — cookbook_routes.py + cookbook_helpers.py + cookbook_output.py + shim (MEDIUM, 4,941 ln) — SHIPPED (fork PR #8, merge `dbc7be5`); co-located, byte-identical move
 
 ### Phase 3: Chat/Agent (highest-risk, last)
 
@@ -92,4 +92,4 @@ surfaces under "chat".
 | v0.5+ | Slices 7–8 — frontend CSS/JS | Separate timeline (#2617) |
 
 ---
-*Roadmap created: 2026-07-01 · Grounded against codebase + spec §4: 2026-07-01*
+*Roadmap created: 2026-07-01 · Grounded against codebase + spec §4: 2026-07-01 · Last updated: 2026-07-04 after Phase 2 complete (only Phase 3 / Chat-Agent remains for v0.1)*

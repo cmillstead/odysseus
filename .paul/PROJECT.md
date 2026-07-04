@@ -23,8 +23,8 @@ behavior change and no broken import paths along the way.
 |-----------|-------|
 | Type | Application (Python / FastAPI backend) |
 | Version | 0.0.0 |
-| Status | Initializing |
-| Last Updated | 2026-07-01 |
+| Status | In progress — Phases 1 & 2 complete, Phase 3 (Chat/Agent) remaining |
+| Last Updated | 2026-07-04 |
 
 ## Requirements
 
@@ -47,16 +47,16 @@ behavior change and no broken import paths along the way.
 - [x] Slice 2 — `routes/document/` domain package — merged 2026-07-01 (fork PR #3, merge `b049650`)
 - [x] Slice 2 — `routes/auth/` domain package — merged 2026-07-01 (fork PR #4, merge `dcde7b1`) — **Phase 1 complete**
 - [x] Slice 2 — `routes/calendar/` + `routes/contacts/` domain packages (two separate) — merged 2026-07-01 (fork PR #5, merge `5907c96`) — **first Phase 2 domain**
+- [x] Slice 2 — `routes/model/` domain package (model + assistant + copilot, co-located) — merged 2026-07-04 (fork PR #7, merge `bd32ccb`)
+- [x] Slice 2 — `routes/cookbook/` domain package (routes + helpers + output, co-located, byte-identical) — merged 2026-07-04 (fork PR #8, merge `dbc7be5`) — **Phase 2 complete**
 
 ### Active (In Progress)
 
-- [ ] v0.1 milestone: Slice 2 — package the remaining **multi-file** route domains
+- [ ] v0.1 milestone: Slice 2 — package the **last** remaining multi-file route domain (Chat/Agent, Phase 3)
 
 ### Planned (Next) — grounded 2026-07-01, spec §4 boundaries
 
-- [ ] Model/LLM (model_routes + assistant_routes + copilot_routes) — MEDIUM  ← **next (02-02)**
-- [ ] Cookbook (cookbook_routes + cookbook_helpers + cookbook_output) — MEDIUM (02-03)
-- [ ] Chat/Agent (chat_routes + chat_helpers; shell/codex/skills shape TBD) — HIGH
+- [ ] Chat/Agent (chat_routes + chat_helpers; shell/codex/skills shape TBD) — HIGH ← **next (03-01), last v0.1 domain**
 
 ### Out of Scope (for v0.1)
 
@@ -98,6 +98,7 @@ behavior change and no broken import paths along the way.
 | Domain boundaries follow spec §4 | The authoritative Route Ownership Map groups differently than the first-draft roadmap (e.g. Calendar/Contacts = one domain; Chat/Agent bundles chat+shell+codex+skills). | 2026-07-01 | Active |
 | `sys.modules` alias shim pattern | Preserves `mock.patch` targets and every import path across the move (proven on gallery/research/email). | 2026-06 | Active |
 | One domain per PR | Route modules carry helper imports, registration assumptions, and test import paths — atomic per-domain PRs keep review + rollback clean. | 2026-06 | Active |
+| Co-locate themed groupings (Model, Cookbook) into one package; split zero-shared-code groupings (Calendar/Contacts) | Model = themed standalone files with an intra-domain edge; Cookbook = routes+helpers+output with a real internal DAG → one `routes/{model,cookbook}/` package each. Calendar/Contacts share no code → two packages. Shape decided per-domain at plan time. | 2026-07-04 | Active |
 
 ## Success Metrics
 
@@ -105,7 +106,7 @@ behavior change and no broken import paths along the way.
 |--------|--------|---------|--------|
 | Test-suite parity per slice | 0 new failures vs baseline | baseline: 3 pre-existing failures | On track |
 | `python -m compileall` | clean on every PR | clean | On track |
-| Multi-file route domains packaged (v0.1) | 9 / 9 | 6 / 9 (email, gallery, research, document, auth, calendar+contacts) | In progress |
+| Multi-file route domains packaged (v0.1) | 9 / 9 | 8 / 9 (email, gallery, research, document, auth, calendar+contacts, model, cookbook) — only Chat/Agent left | In progress |
 | Slice 1 (tool_implementations → src/tools/) | complete | complete | Achieved |
 
 ## Tech Stack / Tools
@@ -119,4 +120,4 @@ behavior change and no broken import paths along the way.
 | Review gate | Codex CLI (`/second-opinion`) | Cross-model review per slice |
 
 ---
-*Created: 2026-07-01*
+*Created: 2026-07-01 · Last updated: 2026-07-04 after Phase 2 (Medium-risk domains) complete*

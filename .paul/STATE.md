@@ -6,27 +6,28 @@ See: .paul/PROJECT.md (updated 2026-07-01)
 
 **Core value:** Contributors can navigate and safely change the backend because domain
 logic lives in discoverable, right-sized modules — zero behavior change, no broken imports.
-**Current focus:** v0.1 Backend Module Boundaries (Slice 2, multi-file domains) — Phase 2 in progress; 02-01 + 02-02 shipped, 02-03 applied.
+**Current focus:** v0.1 Backend Module Boundaries (Slice 2, multi-file domains) — **Phase 2 COMPLETE**; Phase 3 (Chat/Agent, last) not started.
 
 ## Current Position
 
 Milestone: v0.1 Backend Module Boundaries
-Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 + 02-02 SHIPPED, 02-03 APPLIED)
-Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM, PR #7) SHIPPED — merged to `dev` as `bd32ccb`. 02-03 (Cookbook) APPLIED + Codex-approved — PR to `dev` pending.
-Status: 02-03 loop PLAN✓ APPLY✓ (UNIFY next). Co-located `routes/cookbook/` package + 3 shims, byte-identical move; full suite 4292 passed / 0 new failures; internal audit (spec+simplify+harden) + feature QA all PASS/0 findings; Codex diff review PASS (0 defects, live-probed identity + mock.patch visibility). No import_state.py/reload-site changes (shim-reload gotcha absent). SUMMARY at 02-03-SUMMARY.md. Next: open PR to `dev`, then UNIFY 02-03 → Phase 2 transition fires after 02-03 ships.
-Last activity: 2026-07-04 — 02-02 SHIPPED (PR #7 merged as bd32ccb; supersedes prior "merge held" note). 02-03 Cookbook APPLIED via /coding-team (implementer Tasks 1–4, byte-identical, 0 new failures) — Codex-PASS on both plan (3 rounds) and diff.
+Phase: 3 of 3 — Chat/Agent (highest-risk, last) — **NOT STARTED** (Phases 1 & 2 COMPLETE)
+Plan: Phase 2 CLOSED — 02-01 (Calendar/Contacts, PR #5), 02-02 (Model/LLM, PR #7 `bd32ccb`), 02-03 (Cookbook, PR #8 `dbc7be5`) all SHIPPED + UNIFIED. Phase 3 plan 03-01 not yet authored.
+Status: 02-03 loop CLOSED (PLAN✓ APPLY✓ UNIFY✓ SHIPPED✓). Phase 2→3 transition executed. Co-located `routes/cookbook/` package + 3 shims, byte-identical; full suite 4292 passed / 0 new failures; internal audit + feature QA + Codex diff review all PASS/0 findings. Only remaining v0.1 domain: Chat/Agent (Phase 3, 03-01) — shape is an OPEN CALL (see ROADMAP §Phase 3): all five of chat/shell/codex/skills into `routes/chat/`, or `routes/chat/` = chat_routes+chat_helpers only with shell/codex/skills left flat (recommendation leans the latter).
+Last activity: 2026-07-04 — 02-03 Cookbook SHIPPED (PR #8 merged as `dbc7be5`); Phase 2 UNIFIED + transitioned to Phase 3. Reconciled stale ROADMAP/PROJECT (Phase-1 & Phase-2 transitions had never refreshed them).
 
 Progress:
-- Milestone: [████████░░] 78% by domain (7 of 9 merged; 02-03 applied, PR pending)
-- Phase 1: [██████████] 100% (2 of 2 plans complete)
-- Phase 2: [██████████] 100% applied (3 of 3: 02-01 + 02-02 shipped, 02-03 applied/PR-pending)
+- Milestone: [█████████░] 89% by domain (8 of 9 shipped; only Chat/Agent remains)
+- Phase 1: [██████████] 100% (2 of 2 plans complete — document, auth)
+- Phase 2: [██████████] 100% COMPLETE (3 of 3 shipped: 02-01 + 02-02 + 02-03)
+- Phase 3: [░░░░░░░░░░] 0% (0 of 1 — not started)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ✓         ·         ·   [02-03 APPLY complete — PR to `dev` pending, UNIFY next. 02-01 (PR #5) + 02-02 (PR #7, bd32ccb) SHIPPED.]
+  ✓        ✓         ✓         ✓   [02-03 loop CLOSED. Phase 2 COMPLETE (02-01 PR #5, 02-02 PR #7, 02-03 PR #8 dbc7be5). Next: PLAN 03-01 Chat/Agent.]
 ```
 
 ## Accumulated Context
@@ -59,12 +60,12 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-04 — 02-03 Cookbook APPLIED via /coding-team (PR to `dev` pending).
-Stopped at: **Phase 2 domain 3/3 APPLIED** — 02-03 Cookbook loop PLAN✓ APPLY✓ (UNIFY next). Co-located `routes/cookbook/` package (`routes.py` 3,501 + `helpers.py` 1,365 + `output.py` 75 + docstring-only `__init__`) behind 3 `sys.modules` shims; byte-identical move (empty content diffs), no shim-reload gotcha (absent for cookbook). 9 source-path test literals repointed across 4 files (both slash- and segment-joined forms) + guard test `test_cookbook_package_shim.py`. Full suite 4292 passed / 0 new failures; internal audit + feature QA + Codex diff review all PASS/0 findings. SUMMARY at `.paul/phases/02-medium-risk-domains/02-03-SUMMARY.md`. Commits `d604b36` (move) + `9d4fcb0` (guard test) on `refactor/routes-cookbook-domain`.
-Also this session: reconciled stale STATE — 02-02 PR #7 is MERGED (`bd32ccb`), not "held"; marked 02-02 SHIPPED.
-Next action: (1) open PR (`refactor/routes-cookbook-domain` → `dev`) — includes this SUMMARY + STATE bump; (2) merge it → completes 02-03 SHIP; (3) UNIFY 02-03 (sync paul.json + final STATE). Phase 2 → 3 transition fires only after 02-03 ships (last Phase-2 domain). Then MEDIUM domains done; Slice 2 domain 9/9 (singleton "Other" bucket) + Phase 3 remain.
+Last session: 2026-07-04 — 02-03 Cookbook SHIPPED (PR #8 `dbc7be5`); Phase 2 UNIFIED + transitioned to Phase 3.
+Stopped at: **Phase 2 COMPLETE, transitioned to Phase 3 (not started)**. All three Phase-2 domains shipped: 02-01 Calendar/Contacts (PR #5), 02-02 Model/LLM (PR #7 `bd32ccb`), 02-03 Cookbook (PR #8 `dbc7be5`). 02-03 = co-located `routes/cookbook/` (`routes.py` 3,501 + `helpers.py` 1,365 + `output.py` 75 + docstring-only `__init__`) behind 3 `sys.modules` shims, byte-identical; 9 test literals repointed + guard test; full suite 4292 passed / 0 new failures; audit + QA + Codex diff review all PASS/0. This UNIFY also reconciled ROADMAP.md + PROJECT.md, which had drifted (Phase-1 & Phase-2 transitions never refreshed them — ROADMAP still read "0 of 3 phases complete").
+Next action: **PLAN 03-01 Chat/Agent** (last v0.1 domain, Phase 3, HIGH-risk) — but FIRST settle the OPEN CALL (ROADMAP §Phase 3): (a) all five chat/shell/codex/skills → `routes/chat/`, vs (b) `routes/chat/` = chat_routes+chat_helpers only, shell/codex/skills stay flat (recommendation leans b — don't over-bundle unrelated surfaces). Suggested pre-plan: `/paul:ground` or `/paul:discuss` for the chat/agent shape before `/paul:plan`. After 03-01 ships → v0.1 milestone complete → `/paul:complete-milestone`.
+Bookkeeping note: this Phase-2-close UNIFY landed on branch `chore/paul-02-03-unify-phase2-close` → PR to `dev` (no direct commits to `dev`, per project rule + global no-commit-to-main rule).
 OUTSTANDING (harness, NOT this repo): enforce "always second-opinion the PLAN before APPLY" as a HARD gate in the PAUL `/paul:apply` workflow. Per the session-directory rule this is harness work — do it from a `~/.claude`-rooted session, not odysseus. (Apply-gate fence already deployed + settled per docs/handoff/2026-07-04-session-close-02-02-shipped-and-harness-settled.md.)
-Resume file: .paul/phases/02-medium-risk-domains/02-03-SUMMARY.md
+Resume file: .paul/ROADMAP.md
 
 ---
 *STATE.md — Updated after every significant action*
