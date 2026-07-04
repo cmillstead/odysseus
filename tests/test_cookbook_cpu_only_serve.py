@@ -17,7 +17,7 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "static/js/cookbook.js"
 SERVE_SRC = Path(__file__).resolve().parent.parent / "static/js/cookbookServe.js"
 ROOT = SRC.parent.parent.parent
-ROUTES_SRC = ROOT / "routes/cookbook_routes.py"
+ROUTES_SRC = ROOT / "routes/cookbook/routes.py"
 
 def test_cpu_only_drops_gpu_only_flags():
     text = SRC.read_text(encoding="utf-8")
@@ -119,7 +119,7 @@ def test_local_serve_payload_ignores_stale_env_platform():
 
 def test_local_windows_llamacpp_prefers_native_llama_server():
     text = SRC.read_text(encoding="utf-8")
-    helpers = (ROOT / "routes/cookbook_helpers.py").read_text(encoding="utf-8")
+    helpers = (ROOT / "routes/cookbook/helpers.py").read_text(encoding="utf-8")
 
     assert "Object.prototype.hasOwnProperty.call(f, 'host')" in text
     assert "const _isWin = _targetHost ? _isWindows(_targetHost) : _isWindows('local');" in text
@@ -152,7 +152,7 @@ def test_local_windows_llama_server_skips_source_bootstrap():
 
 
 def test_local_windows_llama_server_path_includes_user_wrapper_and_cuda_builds():
-    routes = (ROOT / "routes/cookbook_routes.py").read_text(encoding="utf-8")
+    routes = (ROOT / "routes/cookbook/routes.py").read_text(encoding="utf-8")
 
     assert 'if local_windows:' in routes
     assert (

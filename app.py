@@ -718,7 +718,7 @@ from routes.shell_routes import setup_shell_routes
 app.include_router(setup_shell_routes())
 
 # Cookbook (model download/serve/cache, cookbook state sync)
-from routes.cookbook_routes import setup_cookbook_routes
+from routes.cookbook.routes import setup_cookbook_routes
 app.include_router(setup_cookbook_routes())
 
 from routes.workspace_routes import setup_workspace_routes
