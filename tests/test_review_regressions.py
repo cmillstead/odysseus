@@ -91,7 +91,12 @@ def _install_model_route_import_stubs(monkeypatch):
     session_mgr_mod = types.ModuleType("core.session_manager")
     session_mgr_mod.SessionManager = MagicMock()
 
-    monkeypatch.delitem(sys.modules, "routes.model_routes", raising=False)
+    monkeypatch.delitem(sys.modules, "routes.model_routes", raising=False)  # mock-ok: sys.modules eviction, not a dependency mock
+    monkeypatch.delitem(sys.modules, "routes.model.routes", raising=False)  # mock-ok: sys.modules eviction (not a dependency mock) — forces the shim to re-execute under the stubs above
+    if (routes_pkg := sys.modules.get("routes")) is not None:
+        monkeypatch.delattr(routes_pkg, "model_routes", raising=False)  # mock-ok: sys.modules parent-attr eviction, not a dependency mock
+    if (model_pkg := sys.modules.get("routes.model")) is not None:
+        monkeypatch.delattr(model_pkg, "routes", raising=False)  # mock-ok: sys.modules parent-attr eviction, not a dependency mock
     monkeypatch.delitem(sys.modules, "routes.chat_routes", raising=False)
     monkeypatch.delitem(sys.modules, "routes.session_routes", raising=False)
     monkeypatch.setitem(sys.modules, "core", core_mod)

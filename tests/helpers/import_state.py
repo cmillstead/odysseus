@@ -117,7 +117,10 @@ def clear_fake_endpoint_resolver_modules(*extra_modules):
       disk carries a truthy ``__file__`` and is left untouched, as is the case
       where nothing is cached. When the resolver is real, the dependent route
       modules are left untouched too.
-    * When it does act, it drops ``routes.model_routes`` plus every name in
+    * When it does act, it drops ``routes.model_routes`` (and its canonical
+      ``routes.model.routes`` target, since the former is now a ``sys.modules``
+      alias shim onto the latter — evicting only the shim leaves the canonical
+      module cached against the fake resolver) plus every name in
       ``extra_modules``.
     * It removes the ``src.endpoint_resolver`` parent-package attribute only when
       that attribute is the same fake object being evicted.
@@ -138,6 +141,7 @@ def clear_fake_endpoint_resolver_modules(*extra_modules):
     if parent is not None and attr is mod:
         delattr(parent, "endpoint_resolver")
     clear_module("routes.model_routes")
+    clear_module("routes.model.routes")
     for name in extra_modules:
         clear_module(name)
 

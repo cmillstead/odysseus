@@ -1,15 +1,12 @@
 """Tests for share_defaults_with_users setting"""
-import pytest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from tests.helpers.import_state import preserve_import_state
-from tests.helpers.db_stubs import make_core_db_stub
 
-with preserve_import_state("core.database", "src.database", "routes.model_routes", "routes.prefs_routes"):
+with preserve_import_state("core.database", "src.database", "routes.model_routes", "routes.model.routes", "routes.prefs_routes"):
     import routes.model_routes as model_routes
     import routes.prefs_routes as prefs_routes
-    import src.auth_helpers as auth_helpers
 
 
 ### Helper Classes

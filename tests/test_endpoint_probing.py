@@ -27,7 +27,7 @@ import pytest
 
 from tests.helpers.import_state import clear_fake_endpoint_resolver_modules, preserve_import_state
 
-with preserve_import_state("core.database", "src.database", "core.session_manager", "routes.model_routes"):
+with preserve_import_state("core.database", "src.database", "core.session_manager", "routes.model_routes", "routes.model.routes"):
     # Match test_model_routes.py: if another test stubbed src.endpoint_resolver
     # during collection, drop the stub so the real URL helpers load here.
     clear_fake_endpoint_resolver_modules()
@@ -55,7 +55,6 @@ with preserve_import_state("core.database", "src.database", "core.session_manage
         _rewrite_loopback_for_docker,
         _openai_model_ids,
         _ollama_model_names,
-        _PROVIDER_CURATED,
     )
 
 
