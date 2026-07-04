@@ -11,10 +11,10 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 ## Current Position
 
 Milestone: v0.1 Backend Module Boundaries
-Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 + 02-02 APPLIED)
-Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) APPLIED + Codex-approved — PR to dev pending.
-Status: 02-02 APPLY complete (4 commits on `refactor/routes-model-domain`); full suite green at baseline parity, Codex diff review APPROVED (0 findings). Next: UNIFY → PR to dev.
-Last activity: 2026-07-04 — 02-02 applied (co-located `routes/model/` package + 3 shims; shim-reload gotcha fixed across shared helper + 4 sites); applied under logged override (gate had no recorded artifact for the pre-recorder 3-round plan review)
+Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 shipped, 02-02 UNIFIED)
+Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) UNIFIED + Codex-approved — PR #7 OPEN, merge held by user.
+Status: 02-02 loop CLOSED (PLAN✓ APPLY✓ UNIFY✓); SUMMARY reconciled against all 6 ACs, full suite green at baseline parity, Codex diff review APPROVED (0 findings). PR #7 to `dev` is CLEAN/MERGEABLE — user chose to hold the merge. Next: merge PR #7, then PLAN 02-03 (Cookbook).
+Last activity: 2026-07-04 — 02-02 UNIFY complete; SUMMARY confirmed complete (was written during APPLY as c1c7dbe); paul.json synced to Phase 2. Applied under logged override (gate had no recorded artifact for the pre-recorder 3-round plan review).
 
 Progress:
 - Milestone: [███████░░░] 67% by domain (6 of 9 merged; 02-02 applied, not yet merged)
@@ -26,7 +26,7 @@ Progress:
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ✓         ·         ·   [02-02 APPLIED + Codex-approved — UNIFY/PR next. 02-01 shipped (PR #5).]
+  ✓        ✓         ✓         ·   [02-02 loop CLOSED. PR #7 OPEN (CLEAN) — merge held by user. 02-01 shipped (PR #5).]
 ```
 
 ## Accumulated Context
@@ -59,16 +59,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-01 — 02-01 Calendar/Contacts shipped.
-Stopped at: **Phase 2 domain 1/3 COMPLETE** — 02-01 Calendar/Contacts (PR #5, merge `5907c96`) shipped; two separate packages behind shims; full suite 4273 passed / 0 new failures; Codex clean. A shim-induced regression in `test_calendar_owner_scope.py` was found and fixed (see Deferred Issues → shim-reload gotcha for the carry-forward). SUMMARY at `.paul/phases/02-medium-risk-domains/02-01-SUMMARY.md`.
-Next action: APPLY 02-02 — plan is Codex-reviewed (**3 rounds → PASS**, commit `22f87d5`). Dispatch the implementer
-for `.paul/phases/02-medium-risk-domains/02-02-PLAN.md` (Tasks 1-4), then orchestrator runs the full-suite Qualify
-(Task 5) → Codex diff review → PR to dev. On branch `refactor/routes-model-domain`. Headline risk: the 5-site
-shim-reload fix (Task 3). Full handoff: `docs/handoff/2026-07-02-paul-model-domain.md`.
-OUTSTANDING (user's strong ask): enforce "always second-opinion the PLAN before APPLY" as a HARD gate in the PAUL
-`/paul:apply` workflow via `/harness-engineer` (memory can't enforce it). User was choosing APPLY-first vs
-enforcement-first at the clear.
-Resume file: docs/handoff/2026-07-02-paul-model-domain.md → .paul/phases/02-medium-risk-domains/02-02-PLAN.md
+Last session: 2026-07-04 — 02-02 Model/LLM UNIFIED (loop closed).
+Stopped at: **Phase 2 domain 2/3 UNIFIED** — 02-02 Model/LLM loop CLOSED (PLAN✓ APPLY✓ UNIFY✓). Co-located `routes/model/` package + 3 shims; shim-reload gotcha fixed across shared helper + 4 sites; full suite 4284 passed / 0 new failures; Codex diff review APPROVED (0 findings). SUMMARY at `.paul/phases/02-medium-risk-domains/02-02-SUMMARY.md`. paul.json synced to Phase 2. PR #7 (`refactor/routes-model-domain` → `dev`) is OPEN + CLEAN/MERGEABLE — user chose to hold the merge this session.
+Next action: (1) merge PR #7 to `dev` when ready (CLEAN, Codex-approved) → completes 02-02 SHIP; (2) then PLAN 02-03 Cookbook (last Phase-2 domain — no PLAN authored yet) via `/paul:plan`. Phase 2 → transition fires only after 02-03 ships.
+OUTSTANDING (harness, NOT this repo): enforce "always second-opinion the PLAN before APPLY" as a HARD gate in the PAUL `/paul:apply` workflow. Per the session-directory rule this is harness work — do it from a `~/.claude`-rooted session, not odysseus. (Apply-gate fence already deployed + settled per docs/handoff/2026-07-04-session-close-02-02-shipped-and-harness-settled.md.)
+Resume file: .paul/phases/02-medium-risk-domains/02-02-SUMMARY.md
 
 ---
 *STATE.md — Updated after every significant action*
