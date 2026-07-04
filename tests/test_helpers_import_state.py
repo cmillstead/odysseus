@@ -24,6 +24,8 @@ _RESOLVER_NAMES = (
     "src.endpoint_resolver",
     "routes",
     "routes.model_routes",
+    "routes.model",
+    "routes.model.routes",
     "routes.chat_routes",
 )
 
@@ -314,7 +316,11 @@ def test_clear_fake_resolver_evicts_empty_file_resolver():
 
 def test_clear_fake_resolver_removes_model_routes_when_resolver_fake():
     """model_routes is dropped, and its parent `routes` attr is cleared too —
-    the behavior delta over the old bare sys.modules.pop() guards."""
+    the behavior delta over the old bare sys.modules.pop() guards. The
+    canonical routes.model.routes (the shim's real target) is dropped too,
+    alongside its parent `routes.model` attr — otherwise the shim's
+    `from routes.model import routes` would keep re-fetching the stale
+    canonical module and defeat the eviction."""
     with preserve_import_state(*_RESOLVER_NAMES):
         fake_src = types.ModuleType("src")
         fake_resolver = types.ModuleType("src.endpoint_resolver")
@@ -328,10 +334,18 @@ def test_clear_fake_resolver_removes_model_routes_when_resolver_fake():
         sys.modules["routes"] = fake_routes
         sys.modules["routes.model_routes"] = model_routes
 
+        fake_model_pkg = types.ModuleType("routes.model")
+        model_dot_routes = types.ModuleType("routes.model.routes")
+        fake_model_pkg.routes = model_dot_routes
+        sys.modules["routes.model"] = fake_model_pkg
+        sys.modules["routes.model.routes"] = model_dot_routes
+
         clear_fake_endpoint_resolver_modules()
 
         assert "routes.model_routes" not in sys.modules
         assert not hasattr(fake_routes, "model_routes")
+        assert "routes.model.routes" not in sys.modules
+        assert not hasattr(fake_model_pkg, "routes")
 
 
 def test_clear_fake_resolver_removes_extra_modules_when_resolver_fake():

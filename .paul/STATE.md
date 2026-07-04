@@ -11,22 +11,22 @@ logic lives in discoverable, right-sized modules — zero behavior change, no br
 ## Current Position
 
 Milestone: v0.1 Backend Module Boundaries
-Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 Calendar/Contacts COMPLETE)
-Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. Next: 02-02 (Model/LLM).
-Status: 02-01 merged → GROUND/PLAN 02-02 (Model/LLM: model + assistant + copilot, MEDIUM)
-Last activity: 2026-07-01 — 02-01 Calendar/Contacts shipped: Codex clean, full suite 4273 passed / 0 new failures, PR #5 merged (`5907c96`)
+Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 shipped, 02-02 UNIFIED)
+Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) UNIFIED + Codex-approved — PR #7 OPEN, merge held by user.
+Status: 02-02 loop CLOSED (PLAN✓ APPLY✓ UNIFY✓); SUMMARY reconciled against all 6 ACs, full suite green at baseline parity, Codex diff review APPROVED (0 findings). PR #7 to `dev` is CLEAN/MERGEABLE — user chose to hold the merge. Next: merge PR #7, then PLAN 02-03 (Cookbook).
+Last activity: 2026-07-04 — 02-02 UNIFY complete; SUMMARY confirmed complete (was written during APPLY as c1c7dbe); paul.json synced to Phase 2. Applied under logged override (gate had no recorded artifact for the pre-recorder 3-round plan review).
 
 Progress:
-- Milestone: [███████░░░] 67% by domain (6 of 9 merged: email, gallery, research, document, auth, calendar+contacts)
+- Milestone: [███████░░░] 67% by domain (6 of 9 merged; 02-02 applied, not yet merged)
 - Phase 1: [██████████] 100% (2 of 2 plans complete)
-- Phase 2: [███░░░░░░░] 33% (1 of 3 plans complete: 02-01)
+- Phase 2: [███████░░░] 67% (2 of 3 applied: 02-01 shipped, 02-02 applied/PR-pending)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ✓        ✓         ✓   [02-01 merged (PR #5) — Phase 2 domain 1/3; next: 02-02 Model/LLM]
+  ✓        ✓         ✓         ·   [02-02 loop CLOSED. PR #7 OPEN (CLEAN) — merge held by user. 02-01 shipped (PR #5).]
 ```
 
 ## Accumulated Context
@@ -59,10 +59,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-01 — 02-01 Calendar/Contacts shipped.
-Stopped at: **Phase 2 domain 1/3 COMPLETE** — 02-01 Calendar/Contacts (PR #5, merge `5907c96`) shipped; two separate packages behind shims; full suite 4273 passed / 0 new failures; Codex clean. A shim-induced regression in `test_calendar_owner_scope.py` was found and fixed (see Deferred Issues → shim-reload gotcha for the carry-forward). SUMMARY at `.paul/phases/02-medium-risk-domains/02-01-SUMMARY.md`.
-Next action: GROUND 02-02 (Model/LLM: model_routes + assistant_routes + copilot_routes) — re-derive live line counts + importer/patch-target + source-path-introspection audit; settle the co-locate-vs-separate call (apply the zero-shared-code test as in 02-01). Then PLAN + APPLY.
-Resume file: .paul/phases/02-medium-risk-domains/ (create 02-02 GROUND/PLAN after grounding)
+Last session: 2026-07-04 — 02-02 Model/LLM UNIFIED (loop closed).
+Stopped at: **Phase 2 domain 2/3 UNIFIED** — 02-02 Model/LLM loop CLOSED (PLAN✓ APPLY✓ UNIFY✓). Co-located `routes/model/` package + 3 shims; shim-reload gotcha fixed across shared helper + 4 sites; full suite 4284 passed / 0 new failures; Codex diff review APPROVED (0 findings). SUMMARY at `.paul/phases/02-medium-risk-domains/02-02-SUMMARY.md`. paul.json synced to Phase 2. PR #7 (`refactor/routes-model-domain` → `dev`) is OPEN + CLEAN/MERGEABLE — user chose to hold the merge this session.
+Next action: (1) merge PR #7 to `dev` when ready (CLEAN, Codex-approved) → completes 02-02 SHIP; (2) then PLAN 02-03 Cookbook (last Phase-2 domain — no PLAN authored yet) via `/paul:plan`. Phase 2 → transition fires only after 02-03 ships.
+OUTSTANDING (harness, NOT this repo): enforce "always second-opinion the PLAN before APPLY" as a HARD gate in the PAUL `/paul:apply` workflow. Per the session-directory rule this is harness work — do it from a `~/.claude`-rooted session, not odysseus. (Apply-gate fence already deployed + settled per docs/handoff/2026-07-04-session-close-02-02-shipped-and-harness-settled.md.)
+Resume file: .paul/phases/02-medium-risk-domains/02-02-SUMMARY.md
 
 ---
 *STATE.md — Updated after every significant action*

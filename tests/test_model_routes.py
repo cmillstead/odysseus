@@ -14,7 +14,7 @@ from fastapi import HTTPException
 
 from tests.helpers.import_state import clear_fake_endpoint_resolver_modules, preserve_import_state
 
-with preserve_import_state("core.database", "src.database", "core.session_manager", "routes.model_routes"):
+with preserve_import_state("core.database", "src.database", "core.session_manager", "routes.model_routes", "routes.model.routes"):
     # Other tests stub this module during collection. These helper tests need
     # the real URL normalization helpers so Anthropic /v1 handling is covered.
     clear_fake_endpoint_resolver_modules()

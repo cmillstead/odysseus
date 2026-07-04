@@ -655,11 +655,11 @@ from routes.embedding_routes import setup_embedding_routes
 app.include_router(setup_embedding_routes())
 
 # Models
-from routes.model_routes import setup_model_routes
+from routes.model.routes import setup_model_routes
 app.include_router(setup_model_routes(model_discovery))
 
 # GitHub Copilot device-flow login
-from routes.copilot_routes import setup_copilot_routes
+from routes.model.copilot import setup_copilot_routes
 app.include_router(setup_copilot_routes())
 
 # ChatGPT Subscription device-flow login
@@ -702,7 +702,7 @@ set_task_scheduler(task_scheduler)
 from routes.task_routes import setup_task_routes
 app.include_router(setup_task_routes(task_scheduler))
 
-from routes.assistant_routes import setup_assistant_routes
+from routes.model.assistant import setup_assistant_routes
 app.include_router(setup_assistant_routes(task_scheduler))
 
 from routes.run_routes import setup_run_routes
