@@ -333,7 +333,7 @@ def test_serve_runner_installs_llama_cpp_server_extra():
     extra is never reinstalled."""
     import pathlib
     src = (pathlib.Path(__file__).resolve().parent.parent
-           / "routes" / "cookbook_routes.py").read_text(encoding="utf-8")
+           / "routes" / "cookbook" / "routes.py").read_text(encoding="utf-8")
     # No serve path may install a bare (extra-less) llama-cpp-python.
     assert "pip install llama-cpp-python " not in src
     assert "_pip_install_fallback_chain('llama-cpp-python'" not in src
@@ -346,7 +346,7 @@ def test_serve_pip_install_normalizes_llama_cpp_alias_and_adds_wheel_index():
     import pathlib
 
     src = (pathlib.Path(__file__).resolve().parent.parent
-        / "routes" / "cookbook_routes.py").read_text(encoding="utf-8")
+        / "routes" / "cookbook" / "routes.py").read_text(encoding="utf-8")
 
     assert "re.sub(r\"(?<![A-Za-z0-9_.\\-/])llama_cpp(?![A-Za-z0-9_.\\-/])\", \"llama-cpp-python[server]\", req.cmd)" in src
     assert "if \"llama-cpp-python\" in req.cmd and \"--extra-index-url\" not in req.cmd:" in src
@@ -586,7 +586,7 @@ def test_normalize_llama_cpp_python_cache_types_preserves_native_cache_flags():
 
 
 def test_model_serve_normalizes_llama_cpp_python_cache_types_after_validation():
-    src = (Path(__file__).resolve().parents[1] / "routes" / "cookbook_routes.py").read_text(encoding="utf-8")
+    src = (Path(__file__).resolve().parents[1] / "routes" / "cookbook" / "routes.py").read_text(encoding="utf-8")
 
     assert "req.cmd = _validate_serve_cmd(req.cmd) or \"\"" in src
     assert "req.cmd = _normalize_llama_cpp_python_cache_types(req.cmd) or \"\"" in src
@@ -720,7 +720,7 @@ def test_llama_cpp_rebuild_cmd_clears_cached_build_paths():
 
 
 def test_local_windows_download_pid_tracks_inner_bash_and_stop_kills_tree():
-    routes_src = (Path(__file__).resolve().parents[1] / "routes" / "cookbook_routes.py").read_text(encoding="utf-8")
+    routes_src = (Path(__file__).resolve().parents[1] / "routes" / "cookbook" / "routes.py").read_text(encoding="utf-8")
     running_src = (Path(__file__).resolve().parents[1] / "static" / "js" / "cookbookRunning.js").read_text(encoding="utf-8")
 
     assert 'printf \'%s\\\\n\' \\"$$\\" > {pp}' in routes_src
