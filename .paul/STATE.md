@@ -6,27 +6,27 @@ See: .paul/PROJECT.md (updated 2026-07-01)
 
 **Core value:** Contributors can navigate and safely change the backend because domain
 logic lives in discoverable, right-sized modules — zero behavior change, no broken imports.
-**Current focus:** v0.1 Backend Module Boundaries (Slice 2, multi-file domains) — Phase 2 in progress; 02-01 shipped.
+**Current focus:** v0.1 Backend Module Boundaries (Slice 2, multi-file domains) — Phase 2 in progress; 02-01 + 02-02 shipped, 02-03 applied.
 
 ## Current Position
 
 Milestone: v0.1 Backend Module Boundaries
-Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 shipped, 02-02 UNIFIED)
-Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM) UNIFIED + Codex-approved — PR #7 OPEN, merge held by user.
-Status: 02-02 loop CLOSED (PLAN✓ APPLY✓ UNIFY✓); SUMMARY reconciled against all 6 ACs, full suite green at baseline parity, Codex diff review APPROVED (0 findings). PR #7 to `dev` is CLEAN/MERGEABLE — user chose to hold the merge. Next: merge PR #7, then PLAN 02-03 (Cookbook).
-Last activity: 2026-07-04 — 02-02 UNIFY complete; SUMMARY confirmed complete (was written during APPLY as c1c7dbe); paul.json synced to Phase 2. Applied under logged override (gate had no recorded artifact for the pre-recorder 3-round plan review).
+Phase: 2 of 3 — Medium-risk domains — **IN PROGRESS** (02-01 + 02-02 SHIPPED, 02-03 APPLIED)
+Plan: 02-01 (Calendar/Contacts, PR #5) SHIPPED. 02-02 (Model/LLM, PR #7) SHIPPED — merged to `dev` as `bd32ccb`. 02-03 (Cookbook) APPLIED + Codex-approved — PR to `dev` pending.
+Status: 02-03 loop PLAN✓ APPLY✓ (UNIFY next). Co-located `routes/cookbook/` package + 3 shims, byte-identical move; full suite 4292 passed / 0 new failures; internal audit (spec+simplify+harden) + feature QA all PASS/0 findings; Codex diff review PASS (0 defects, live-probed identity + mock.patch visibility). No import_state.py/reload-site changes (shim-reload gotcha absent). SUMMARY at 02-03-SUMMARY.md. Next: open PR to `dev`, then UNIFY 02-03 → Phase 2 transition fires after 02-03 ships.
+Last activity: 2026-07-04 — 02-02 SHIPPED (PR #7 merged as bd32ccb; supersedes prior "merge held" note). 02-03 Cookbook APPLIED via /coding-team (implementer Tasks 1–4, byte-identical, 0 new failures) — Codex-PASS on both plan (3 rounds) and diff.
 
 Progress:
-- Milestone: [███████░░░] 67% by domain (6 of 9 merged; 02-02 applied, not yet merged)
+- Milestone: [████████░░] 78% by domain (7 of 9 merged; 02-03 applied, PR pending)
 - Phase 1: [██████████] 100% (2 of 2 plans complete)
-- Phase 2: [███████░░░] 67% (2 of 3 applied: 02-01 shipped, 02-02 applied/PR-pending)
+- Phase 2: [██████████] 100% applied (3 of 3: 02-01 + 02-02 shipped, 02-03 applied/PR-pending)
 
 ## Loop Position
 
 Current loop state:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY ──▶ SHIPPED
-  ✓        ✓         ✓         ·   [02-02 loop CLOSED. PR #7 OPEN (CLEAN) — merge held by user. 02-01 shipped (PR #5).]
+  ✓        ✓         ·         ·   [02-03 APPLY complete — PR to `dev` pending, UNIFY next. 02-01 (PR #5) + 02-02 (PR #7, bd32ccb) SHIPPED.]
 ```
 
 ## Accumulated Context
@@ -59,11 +59,12 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-07-04 — 02-02 Model/LLM UNIFIED (loop closed).
-Stopped at: **Phase 2 domain 2/3 UNIFIED** — 02-02 Model/LLM loop CLOSED (PLAN✓ APPLY✓ UNIFY✓). Co-located `routes/model/` package + 3 shims; shim-reload gotcha fixed across shared helper + 4 sites; full suite 4284 passed / 0 new failures; Codex diff review APPROVED (0 findings). SUMMARY at `.paul/phases/02-medium-risk-domains/02-02-SUMMARY.md`. paul.json synced to Phase 2. PR #7 (`refactor/routes-model-domain` → `dev`) is OPEN + CLEAN/MERGEABLE — user chose to hold the merge this session.
-Next action: (1) merge PR #7 to `dev` when ready (CLEAN, Codex-approved) → completes 02-02 SHIP; (2) then PLAN 02-03 Cookbook (last Phase-2 domain — no PLAN authored yet) via `/paul:plan`. Phase 2 → transition fires only after 02-03 ships.
+Last session: 2026-07-04 — 02-03 Cookbook APPLIED via /coding-team (PR to `dev` pending).
+Stopped at: **Phase 2 domain 3/3 APPLIED** — 02-03 Cookbook loop PLAN✓ APPLY✓ (UNIFY next). Co-located `routes/cookbook/` package (`routes.py` 3,501 + `helpers.py` 1,365 + `output.py` 75 + docstring-only `__init__`) behind 3 `sys.modules` shims; byte-identical move (empty content diffs), no shim-reload gotcha (absent for cookbook). 9 source-path test literals repointed across 4 files (both slash- and segment-joined forms) + guard test `test_cookbook_package_shim.py`. Full suite 4292 passed / 0 new failures; internal audit + feature QA + Codex diff review all PASS/0 findings. SUMMARY at `.paul/phases/02-medium-risk-domains/02-03-SUMMARY.md`. Commits `d604b36` (move) + `9d4fcb0` (guard test) on `refactor/routes-cookbook-domain`.
+Also this session: reconciled stale STATE — 02-02 PR #7 is MERGED (`bd32ccb`), not "held"; marked 02-02 SHIPPED.
+Next action: (1) open PR (`refactor/routes-cookbook-domain` → `dev`) — includes this SUMMARY + STATE bump; (2) merge it → completes 02-03 SHIP; (3) UNIFY 02-03 (sync paul.json + final STATE). Phase 2 → 3 transition fires only after 02-03 ships (last Phase-2 domain). Then MEDIUM domains done; Slice 2 domain 9/9 (singleton "Other" bucket) + Phase 3 remain.
 OUTSTANDING (harness, NOT this repo): enforce "always second-opinion the PLAN before APPLY" as a HARD gate in the PAUL `/paul:apply` workflow. Per the session-directory rule this is harness work — do it from a `~/.claude`-rooted session, not odysseus. (Apply-gate fence already deployed + settled per docs/handoff/2026-07-04-session-close-02-02-shipped-and-harness-settled.md.)
-Resume file: .paul/phases/02-medium-risk-domains/02-02-SUMMARY.md
+Resume file: .paul/phases/02-medium-risk-domains/02-03-SUMMARY.md
 
 ---
 *STATE.md — Updated after every significant action*
