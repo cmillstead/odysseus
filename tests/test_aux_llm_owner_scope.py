@@ -26,7 +26,7 @@ def test_task_name_generation_uses_owner_scoped_session_endpoint():
 
 
 def test_auto_compaction_utility_endpoint_keeps_chat_owner():
-    helper_src = _src("routes/chat_helpers.py")
+    helper_src = _src("routes/chat/helpers.py")
     compact_src = _src("src/context_compactor.py")
 
     assert "owner=user" in helper_src

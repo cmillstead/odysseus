@@ -1146,7 +1146,7 @@ def test_chat_active_document_lookup_is_owner_scoped():
     state is process-global)."""
     import re
 
-    src = Path(__file__).resolve().parents[1] / "routes" / "chat_routes.py"
+    src = Path(__file__).resolve().parents[1] / "routes" / "chat" / "routes.py"
     text = src.read_text()
     # The frontend-supplied id is resolved through the shared owner filter.
     assert "_owner_session_filter(_doc_q, ctx.user)" in text

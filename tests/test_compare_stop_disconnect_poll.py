@@ -1,7 +1,7 @@
 """Runtime coverage for stopping a Compare pane mid-stream.
 
 Replaces an earlier source-text version of this test (which only asserted on
-string positions inside routes/chat_routes.py and never exercised actual
+string positions inside routes/chat/routes.py and never exercised actual
 streaming behavior) with tests that drive the real mechanisms involved:
 
   * src.agent_runs — the detached-run manager that normal chat/agent streams
@@ -37,7 +37,7 @@ from src import agent_runs
 # Starlette raises into a streaming generator when the client disconnects)
 # saves the partial response exactly once via its `except` handler — mirroring
 # the real except (asyncio.CancelledError, GeneratorExit): blocks in
-# routes/chat_routes.py.
+# routes/chat/routes.py.
 # --------------------------------------------------------------------------- #
 class _FakeSaveSink:
     """Records save_partial() calls so tests can assert "saved exactly once"."""
@@ -269,7 +269,7 @@ async def test_cancellation_contract_holds_for_chat_and_agent_shaped_streams(mod
 # chat_stream wiring: compare-mode requests must skip agent_runs.start (stream
 # directly, cancellable promptly); normal requests must still go through it
 # (detached, survives client disconnect). This pins the actual branch added to
-# routes/chat_routes.py rather than re-deriving it from source text.
+# routes/chat/routes.py rather than re-deriving it from source text.
 # --------------------------------------------------------------------------- #
 
 def test_compare_mode_branch_skips_agent_runs_in_source():
@@ -278,7 +278,7 @@ def test_compare_mode_branch_skips_agent_runs_in_source():
     call below it — otherwise compare streams would still be detached and a
     pane's Stop (closing the SSE) wouldn't cancel the upstream call."""
     from pathlib import Path
-    src = (Path(__file__).resolve().parents[1] / "routes" / "chat_routes.py").read_text(encoding="utf-8")
+    src = (Path(__file__).resolve().parents[1] / "routes" / "chat" / "routes.py").read_text(encoding="utf-8")
 
     branch_idx = src.index("if compare_mode:")
     direct_return_idx = src.index("return StreamingResponse(_safe_stream(), media_type=", branch_idx)
